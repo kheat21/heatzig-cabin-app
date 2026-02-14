@@ -11,15 +11,13 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      {/* Header */}
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-4xl font-bold text-gray-800">🏔️ Heatzig Cabin App</h1>
-          <p className="text-gray-600 mt-2">Your family cabin management hub</p>
+          <h1 className="text-4xl font-bold text-gray-800">🏔️ Heatzig Cabin Calendar</h1>
+          <p className="text-gray-600 mt-2">Making it easy!</p>
         </div>
       </header>
 
-      {/* Navigation Tabs */}
       <div className="container mx-auto px-4 mt-6">
         <div className="flex space-x-2 bg-white rounded-lg p-2 shadow-md">
           <button
@@ -42,7 +40,7 @@ export default function Home() {
             }`}
           >
             <MessageSquare size={20} />
-            <span className="font-semibold">Cabin Board</span>
+            <span className="font-semibold">Message Board</span>
           </button>
           <button
             onClick={() => setActiveTab('weather')}
@@ -58,7 +56,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Content */}
       <div className="container mx-auto px-4 py-6">
         {activeTab === 'calendar' && <Calendar />}
         {activeTab === 'board' && <CabinBoard />}

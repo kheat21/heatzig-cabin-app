@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, MessageCircle, Check, RotateCcw, X } from 'lucide-react'
+import { Plus, MessageCircle, Check, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
 interface Comment {
@@ -25,7 +25,7 @@ export default function CabinBoard() {
   const [posts, setPosts] = useState<Post[]>([
     {
       id: '1',
-      author: 'John',
+      author: 'Mark',
       date: '2026-02-10',
       title: 'Low Propane',
       content: 'Propane tank is getting low. Need to schedule a refill soon.',
@@ -33,7 +33,7 @@ export default function CabinBoard() {
       comments: [
         {
           id: 'c1',
-          author: 'Sarah',
+          author: 'Kate',
           text: 'I can call the propane company tomorrow.',
           date: '2026-02-11',
         },
@@ -41,7 +41,7 @@ export default function CabinBoard() {
     },
     {
       id: '2',
-      author: 'Emily',
+      author: 'Mimi',
       date: '2026-02-12',
       title: 'Groceries Needed',
       content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
@@ -50,9 +50,8 @@ export default function CabinBoard() {
     },
   ])
   const [showPostForm, setShowPostForm] = useState(false)
-  const [expandedPost, setExpandedPost] = useState<string | null>(null)
   const [formData, setFormData] = useState({
-    author: 'John',
+    author: 'Mark',
     title: '',
     content: '',
   })
@@ -70,7 +69,7 @@ export default function CabinBoard() {
     }
     setPosts([newPost, ...posts])
     setShowPostForm(false)
-    setFormData({ author: 'John', title: '', content: '' })
+    setFormData({ author: 'Mark', title: '', content: '' })
   }
 
   const toggleStatus = (id: string) => {
@@ -108,7 +107,7 @@ export default function CabinBoard() {
   return (
     <div className="bg-white rounded-xl shadow-lg p-6">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Cabin Board</h2>
+        <h2 className="text-2xl font-bold">Message Board</h2>
         <button
           onClick={() => setShowPostForm(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
@@ -136,21 +135,30 @@ export default function CabinBoard() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => toggleStatus(post.id)}
-                  className={`p-2 rounded-lg transition-colors ${
+                  className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                     post.status === 'done'
-                      ? 'bg-green-100 text-green-600 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
-                  title={post.status === 'done' ? 'Reopen' : 'Mark as Done'}
                 >
-                  {post.status === 'done' ? <RotateCcw size={18} /> : <Check size={18} />}
+                  {post.status === 'done' ? (
+                    <>
+                      <RotateCcw size={16} />
+                      <span>Reopen</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check size={16} />
+                      <span>Resolved</span>
+                    </>
+                  )}
                 </button>
                 <button
                   onClick={() => deletePost(post.id)}
-                  className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200 transition-colors"
-                  title="Delete"
+                  className="flex items-center space-x-1 px-3 py-2 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 transition-colors text-sm font-medium"
                 >
-                  <X size={18} />
+                  <Trash2 size={16} />
+                  <span>Remove</span>
                 </button>
               </div>
             </div>
@@ -231,11 +239,11 @@ export default function CabinBoard() {
               <button
                 onClick={() => {
                   setShowPostForm(false)
-                  setFormData({ author: 'John', title: '', content: '' })
+                  setFormData({ author: 'Mark', title: '', content: '' })
                 }}
                 className="p-1 hover:bg-gray-100 rounded"
               >
-                <X size={24} />
+                <Trash2 size={24} />
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">

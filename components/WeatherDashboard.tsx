@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Cloud, CloudRain, CloudSnow, Sun, Wind, Droplets } from 'lucide-react'
-import { format, addDays } from 'date-fns'
+import { Cloud, CloudRain, CloudSnow, Sun, Wind, Droplets, CloudDrizzle } from 'lucide-react'
+import { format, fromUnixTime } from 'date-fns'
 
 interface WeatherDay {
   date: string
@@ -17,45 +17,97 @@ interface WeatherDay {
 
 export default function WeatherDashboard() {
   const [weather, setWeather] = useState<WeatherDay[]>([])
-  const [location, setLocation] = useState('Cabin Location')
+  const [location, setLocation] = useState('Promontory Club, Park City')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const mockWeather: WeatherDay[] = Array.from({ length: 7 }, (_, i) => {
-      const date = addDays(new Date(), i)
-      const conditions = ['sunny', 'cloudy', 'rain', 'snow']
-      const condition = conditions[Math.floor(Math.random() * conditions.length)]
-      
-      return {
-        date: format(date, 'yyyy-MM-dd'),
-        day: format(date, 'EEEE'),
-        icon: condition,
-        description: condition.charAt(0).toUpperCase() + condition.slice(1),
-        high: Math.floor(Math.random() * 30) + 50,
-        low: Math.floor(Math.random() * 20) + 30,
-        humidity: Math.floor(Math.random() * 40) + 40,
-        wind: Math.floor(Math.random() * 15) + 5,
-      }
-    })
+    const fetchWeather = async () => {
+      const apiKey = process.env.NEXT_PUBLIC_WEATHER_API_KEY
+      const lat = process.env.NEXT_PUBLIC_CABIN_LAT
+      const lon = process.env.NEXT_PUBLIC_CABIN_LON
 
-    setTimeout(() => {
-      setWeather(mockWeather)
-      setLoading(false)
-    }, 500)
+      if (!apiKey || !lat || !lon) {
+        const mockWeather: WeatherDay[] = Array.from({ length: 7 }, (_, i) => {
+          const date = new Date()
+          date.setDate(date.getDate() + i)
+          const conditions = ['sunny', 'cloudy', 'rain', 'snow']
+          const condition = conditions[Math.floor(Math.random() * conditions.length)]
+          
+          return {
+            date: format(date, 'yyyy-MM-dd'),
+            day: format(date, 'EEEE'),
+            icon: condition,
+            description: condition.charAt(0).toUpperCase() + condition.slice(1),
+            high: Math.floor(Math.random() * 30) + 50,
+            low: Math.floor(Math.random() * 20) + 30,
+            humidity: Math.floor(Math.random() * 40) + 40,
+            wind: Math.floor(Math.random() * 15) + 5,
+          }
+        })
+        setWeather(mockWeather)
+        setLoading(false)
+        return
+      }
+
+      try {
+        const response = await fetch(
+          `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${apiKey}&units=imperial`
+        )
+        
+        if (!response.ok) throw new Error('Failed to fetch weather data')
+
+        const data = await response.json()
+        setLocation(data.city.name + ', Utah')
+
+        const dailyData: { [key: string]: any[] } = {}
+        data.list.forEach((item: any) => {
+          const date = format(fromUnixTime(item.dt), 'yyyy-MM-dd')
+          if (!dailyData[date]) dailyData[date] = []
+          dailyData[date].push(item)
+        })
+
+        const forecast: WeatherDay[] = Object.keys(dailyData).slice(0, 7).map((date) => {
+          const dayData = dailyData[date]
+          const temps = dayData.map((d) => d.main.temp)
+          const weatherIcon = dayData[0].weather[0].main.toLowerCase()
+          
+          return {
+            date,
+            day: format(new Date(date), 'EEEE'),
+            icon: weatherIcon,
+            description: dayData[0].weather[0].description,
+            high: Math.round(Math.max(...temps)),
+            low: Math.round(Math.min(...temps)),
+            humidity: dayData[0].main.humidity,
+            wind: Math.round(dayData[0].wind.speed),
+          }
+        })
+
+        setWeather(forecast)
+        setLoading(false)
+      } catch (err) {
+        console.error('Weather fetch error:', err)
+        setLoading(false)
+      }
+    }
+
+    fetchWeather()
   }, [])
 
   const getWeatherIcon = (icon: string, size: number = 48) => {
-    switch (icon) {
-      case 'sunny':
-        return <Sun size={size} className="text-yellow-500" />
-      case 'cloudy':
-        return <Cloud size={size} className="text-gray-500" />
-      case 'rain':
-        return <CloudRain size={size} className="text-blue-500" />
-      case 'snow':
-        return <CloudSnow size={size} className="text-blue-300" />
-      default:
-        return <Cloud size={size} className="text-gray-500" />
+    const iconName = icon.toLowerCase()
+    if (iconName.includes('clear') || iconName.includes('sun')) {
+      return <Sun size={size} className="text-yellow-500" />
+    } else if (iconName.includes('rain')) {
+      return <CloudRain size={size} className="text-blue-500" />
+    } else if (iconName.includes('drizzle')) {
+      return <CloudDrizzle size={size} className="text-blue-400" />
+    } else if (iconName.includes('snow')) {
+      return <CloudSnow size={size} className="text-blue-300" />
+    } else if (iconName.includes('cloud')) {
+      return <Cloud size={size} className="text-gray-500" />
+    } else {
+      return <Cloud size={size} className="text-gray-500" />
     }
   }
 
@@ -77,7 +129,7 @@ export default function WeatherDashboard() {
         <p className="text-gray-600">{location}</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4">
         {weather.map((day, index) => (
           <div
             key={day.date}
@@ -96,7 +148,7 @@ export default function WeatherDashboard() {
               {getWeatherIcon(day.icon)}
             </div>
 
-            <p className="text-center text-gray-700 font-medium mb-3">
+            <p className="text-center text-gray-700 font-medium mb-3 capitalize text-sm">
               {day.description}
             </p>
 
@@ -129,27 +181,6 @@ export default function WeatherDashboard() {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="mt-6 bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
-        <h3 className="font-bold text-blue-800 mb-2">💡 Planning Tips</h3>
-        <ul className="text-sm text-blue-700 space-y-1">
-          <li>• Check weather before your trip to pack appropriately</li>
-          <li>• Snow conditions may affect road access</li>
-          <li>• Bring extra layers if temperatures drop below 40°F</li>
-          <li>• Consider rescheduling if severe weather is predicted</li>
-        </ul>
-      </div>
-
-      <div className="mt-4 bg-yellow-50 border border-yellow-200 p-3 rounded text-sm">
-        <p className="text-yellow-800">
-          <strong>Note:</strong> This is showing mock weather data. To get real weather:
-        </p>
-        <ol className="list-decimal ml-5 mt-2 text-yellow-700 space-y-1">
-          <li>Sign up for a free API key at <a href="https://openweathermap.org/api" target="_blank" className="underline">OpenWeatherMap</a></li>
-          <li>Add your API key to a <code className="bg-yellow-100 px-1 rounded">.env.local</code> file</li>
-          <li>Update the component to fetch real data</li>
-        </ol>
       </div>
     </div>
   )
