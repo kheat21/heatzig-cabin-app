@@ -54,11 +54,11 @@ export default function Home() {
       </header>
 
       <div className="container mx-auto px-4 mt-6">
-        <div className="bg-white rounded-lg p-2 shadow-md overflow-x-auto scrollbar-hide">
-          <div className="flex space-x-2 min-w-max">
+        <div className="bg-white rounded-lg p-2 shadow-md">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveTab('calendar')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
                 activeTab === 'calendar'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -69,7 +69,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('board')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
                 activeTab === 'board'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -80,7 +80,7 @@ export default function Home() {
             </button>
             <button
               onClick={() => setActiveTab('weather')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all whitespace-nowrap ${
+              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
                 activeTab === 'weather'
                   ? 'bg-blue-600 text-white shadow-lg'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
