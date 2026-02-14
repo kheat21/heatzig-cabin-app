@@ -1,20 +1,55 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Calendar from '@/components/Calendar'
 import CabinBoard from '@/components/CabinBoard'
 import WeatherDashboard from '@/components/WeatherDashboard'
-import { CalendarDays, MessageSquare, Cloud } from 'lucide-react'
+import LoginScreen from '@/components/LoginScreen'
+import { CalendarDays, MessageSquare, Cloud, LogOut } from 'lucide-react'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'calendar' | 'board' | 'weather'>('calendar')
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const loggedIn = localStorage.getItem('heatzig_logged_in')
+    if (loggedIn === 'true') {
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  const handleLogin = () => {
+    localStorage.setItem('heatzig_logged_in', 'true')
+    setIsAuthenticated(true)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('heatzig_logged_in')
+    setIsAuthenticated(false)
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen onLogin={handleLogin} />
+  }
 
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <header className="bg-white shadow-md">
         <div className="container mx-auto px-4 py-6">
-          <h1 className="text-4xl font-bold text-gray-800">🏔️ Heatzig Cabin Calendar</h1>
-          <p className="text-gray-600 mt-2">Making it easy!</p>
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-4xl font-bold text-gray-800">Heatzig Cabin Calendar</h1>
+              <p className="text-gray-600 mt-2">Making it easy!</p>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition text-gray-700"
+            >
+              <LogOut size={18} />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
+          </div>
         </div>
       </header>
 
