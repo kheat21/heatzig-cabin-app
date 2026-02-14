@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, MessageCircle, Check, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -22,33 +22,7 @@ interface Post {
 }
 
 export default function CabinBoard() {
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: '1',
-      author: 'Mark',
-      date: '2026-02-10',
-      title: 'Low Propane',
-      content: 'Propane tank is getting low. Need to schedule a refill soon.',
-      status: 'open',
-      comments: [
-        {
-          id: 'c1',
-          author: 'Kate',
-          text: 'I can call the propane company tomorrow.',
-          date: '2026-02-11',
-        },
-      ],
-    },
-    {
-      id: '2',
-      author: 'Mimi',
-      date: '2026-02-12',
-      title: 'Groceries Needed',
-      content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
-      status: 'done',
-      comments: [],
-    },
-  ])
+  const [posts, setPosts] = useState<Post[]>([])
   const [showPostForm, setShowPostForm] = useState(false)
   const [formData, setFormData] = useState({
     author: 'Mark',
@@ -57,6 +31,52 @@ export default function CabinBoard() {
   })
   const [commentText, setCommentText] = useState('')
   const [commentingOn, setCommentingOn] = useState<string | null>(null)
+
+  // Load posts from localStorage on mount
+  useEffect(() => {
+    const savedPosts = localStorage.getItem('cabin_posts')
+    if (savedPosts) {
+      setPosts(JSON.parse(savedPosts))
+    } else {
+      // Default posts if none saved
+      const defaultPosts = [
+        {
+          id: '1',
+          author: 'Mark',
+          date: '2026-02-10',
+          title: 'Low Propane',
+          content: 'Propane tank is getting low. Need to schedule a refill soon.',
+          status: 'open' as const,
+          comments: [
+            {
+              id: 'c1',
+              author: 'Kate',
+              text: 'I can call the propane company tomorrow.',
+              date: '2026-02-11',
+            },
+          ],
+        },
+        {
+          id: '2',
+          author: 'Mimi',
+          date: '2026-02-12',
+          title: 'Groceries Needed',
+          content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
+          status: 'done' as const,
+          comments: [],
+        },
+      ]
+      setPosts(defaultPosts)
+      localStorage.setItem('cabin_posts', JSON.stringify(defaultPosts))
+    }
+  }, [])
+
+  // Save posts to localStorage whenever they change
+  useEffect(() => {
+    if (posts.length > 0) {
+      localStorage.setItem('cabin_posts', JSON.stringify(posts))
+    }
+  }, [posts])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
