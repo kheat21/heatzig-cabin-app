@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
-import { ChevronLeft, ChevronRight, X, User, Calendar as CalendarIcon, Users, StickyNote } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { ChevronLeft, ChevronRight, X, User, Calendar as CalendarIcon, Users, StickyNote, Edit, Trash2 } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, parseISO, isAfter, startOfToday, differenceInDays, isBefore, getDay } from 'date-fns'
+import { saveToStorage, loadFromStorage } from '@/lib/storage'
 
 interface Trip {
   id: string
@@ -51,6 +52,31 @@ const HOLIDAYS = [
   { date: '2027-12-25', name: 'Christmas' },
 ]
 
+const DEFAULT_TRIPS = [
+  {
+    id: '1',
+    tripName: "Kate's Girls Trip",
+    familyMembers: ['Kate', 'Megan', 'Lindsay'],
+    startDate: '2026-02-17',
+    endDate: '2026-02-25',
+    guestCount: 10,
+    createdBy: 'Kate',
+    notes: '',
+    color: '#EC4899',
+  },
+  {
+    id: '2',
+    tripName: 'Bonnie & Sexy 7',
+    familyMembers: ['Bonnie'],
+    startDate: '2026-05-17',
+    endDate: '2026-05-28',
+    guestCount: 7,
+    createdBy: 'Bonnie',
+    notes: '',
+    color: '#F59E0B',
+  },
+]
+
 type ViewMode = '1month' | '2month' | '4month'
 
 interface PositionedTrip {
@@ -63,32 +89,10 @@ interface PositionedTrip {
 export default function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [viewMode, setViewMode] = useState<ViewMode>('1month')
-  const [trips, setTrips] = useState<Trip[]>([
-    {
-      id: '1',
-      tripName: "Kate's Girls Trip",
-      familyMembers: ['Kate', 'Megan', 'Lindsay'],
-      startDate: '2026-02-17',
-      endDate: '2026-02-25',
-      guestCount: 10,
-      createdBy: 'Kate',
-      notes: '',
-      color: '#EC4899',
-    },
-    {
-      id: '2',
-      tripName: 'Bonnie & Sexy 7',
-      familyMembers: ['Bonnie'],
-      startDate: '2026-05-17',
-      endDate: '2026-05-28',
-      guestCount: 7,
-      createdBy: 'Bonnie',
-      notes: '',
-      color: '#F59E0B',
-    },
-  ])
+  const [trips, setTrips] = useState<Trip[]>([])
   const [showTripForm, setShowTripForm] = useState(false)
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
   const [formData, setFormData] = useState({
     tripName: '',
     familyMembers: [] as string[],
@@ -98,6 +102,21 @@ export default function Calendar() {
     createdBy: '',
     notes: '',
   })
+  const [mounted, setMounted] = useState(false)
+
+  // Load trips on mount
+  useEffect(() => {
+    setMounted(true)
+    const loadedTrips = loadFromStorage('cabin_trips', DEFAULT_TRIPS)
+    setTrips(loadedTrips)
+  }, [])
+
+  // Save trips whenever they change (but only after initial mount)
+  useEffect(() => {
+    if (mounted && trips.length >= 0) {
+      saveToStorage('cabin_trips', trips)
+    }
+  }, [trips, mounted])
 
   const getMonthsToShow = () => {
     switch (viewMode) {
@@ -159,12 +178,26 @@ export default function Calendar() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const primaryMember = formData.familyMembers[0] || formData.createdBy
-    const newTrip: Trip = {
-      id: Date.now().toString(),
-      ...formData,
-      color: getMemberColor(primaryMember),
+    
+    if (editingTrip) {
+      // Update existing trip
+      const updatedTrip: Trip = {
+        ...editingTrip,
+        ...formData,
+        color: getMemberColor(primaryMember),
+      }
+      setTrips(trips.map(t => t.id === editingTrip.id ? updatedTrip : t))
+      setEditingTrip(null)
+    } else {
+      // Create new trip
+      const newTrip: Trip = {
+        id: Date.now().toString(),
+        ...formData,
+        color: getMemberColor(primaryMember),
+      }
+      setTrips([...trips, newTrip])
     }
-    setTrips([...trips, newTrip])
+    
     setShowTripForm(false)
     setFormData({
       tripName: '',
@@ -175,6 +208,28 @@ export default function Calendar() {
       createdBy: '',
       notes: '',
     })
+  }
+
+  const handleEdit = (trip: Trip) => {
+    setEditingTrip(trip)
+    setFormData({
+      tripName: trip.tripName,
+      familyMembers: trip.familyMembers,
+      startDate: trip.startDate,
+      endDate: trip.endDate,
+      guestCount: trip.guestCount,
+      createdBy: trip.createdBy,
+      notes: trip.notes,
+    })
+    setSelectedTrip(null)
+    setShowTripForm(true)
+  }
+
+  const handleDelete = (tripId: string) => {
+    if (confirm('Are you sure you want to delete this trip?')) {
+      setTrips(trips.filter(t => t.id !== tripId))
+      setSelectedTrip(null)
+    }
   }
 
   const handleDayClick = (day: Date) => {
@@ -445,7 +500,7 @@ export default function Calendar() {
 
       {selectedTrip && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-gray-800">Trip Details</h3>
               <button
@@ -514,9 +569,26 @@ export default function Calendar() {
               )}
             </div>
 
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => handleEdit(selectedTrip)}
+                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+              >
+                <Edit size={18} />
+                Edit Trip
+              </button>
+              <button
+                onClick={() => handleDelete(selectedTrip.id)}
+                className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition flex items-center justify-center gap-2"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            </div>
+
             <button
               onClick={() => setSelectedTrip(null)}
-              className="w-full mt-6 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
+              className="w-full mt-3 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
             >
               Close
             </button>
@@ -528,10 +600,13 @@ export default function Calendar() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">Plan a Trip</h3>
+              <h3 className="text-2xl font-bold text-gray-800">
+                {editingTrip ? 'Edit Trip' : 'Plan a Trip'}
+              </h3>
               <button
                 onClick={() => {
                   setShowTripForm(false)
+                  setEditingTrip(null)
                   setFormData({
                     tripName: '',
                     familyMembers: [],
@@ -654,6 +729,7 @@ export default function Calendar() {
                   type="button"
                   onClick={() => {
                     setShowTripForm(false)
+                    setEditingTrip(null)
                     setFormData({
                       tripName: '',
                       familyMembers: [],
@@ -672,7 +748,7 @@ export default function Calendar() {
                   type="submit"
                   className="flex-1 bg-[#7fa895] text-white py-3 rounded-lg font-semibold hover:bg-[#6d9280] transition shadow-md"
                 >
-                  Create Trip
+                  {editingTrip ? 'Save Changes' : 'Create Trip'}
                 </button>
               </div>
             </form>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, MessageCircle, Check, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
+import { saveToStorage, loadFromStorage } from '@/lib/storage'
 
 interface Comment {
   id: string
@@ -21,6 +22,34 @@ interface Post {
   comments: Comment[]
 }
 
+const DEFAULT_POSTS = [
+  {
+    id: '1',
+    author: 'Mark',
+    date: '2026-02-10',
+    title: 'Low Propane',
+    content: 'Propane tank is getting low. Need to schedule a refill soon.',
+    status: 'open' as const,
+    comments: [
+      {
+        id: 'c1',
+        author: 'Kate',
+        text: 'I can call the propane company tomorrow.',
+        date: '2026-02-11',
+      },
+    ],
+  },
+  {
+    id: '2',
+    author: 'Mimi',
+    date: '2026-02-12',
+    title: 'Groceries Needed',
+    content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
+    status: 'done' as const,
+    comments: [],
+  },
+]
+
 export default function CabinBoard() {
   const [posts, setPosts] = useState<Post[]>([])
   const [showPostForm, setShowPostForm] = useState(false)
@@ -31,52 +60,21 @@ export default function CabinBoard() {
   })
   const [commentText, setCommentText] = useState('')
   const [commentingOn, setCommentingOn] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
 
-  // Load posts from localStorage on mount
+  // Load posts on mount
   useEffect(() => {
-    const savedPosts = localStorage.getItem('cabin_posts')
-    if (savedPosts) {
-      setPosts(JSON.parse(savedPosts))
-    } else {
-      // Default posts if none saved
-      const defaultPosts = [
-        {
-          id: '1',
-          author: 'Mark',
-          date: '2026-02-10',
-          title: 'Low Propane',
-          content: 'Propane tank is getting low. Need to schedule a refill soon.',
-          status: 'open' as const,
-          comments: [
-            {
-              id: 'c1',
-              author: 'Kate',
-              text: 'I can call the propane company tomorrow.',
-              date: '2026-02-11',
-            },
-          ],
-        },
-        {
-          id: '2',
-          author: 'Mimi',
-          date: '2026-02-12',
-          title: 'Groceries Needed',
-          content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
-          status: 'done' as const,
-          comments: [],
-        },
-      ]
-      setPosts(defaultPosts)
-      localStorage.setItem('cabin_posts', JSON.stringify(defaultPosts))
-    }
+    setMounted(true)
+    const loadedPosts = loadFromStorage('cabin_posts', DEFAULT_POSTS)
+    setPosts(loadedPosts)
   }, [])
 
-  // Save posts to localStorage whenever they change
+  // Save posts whenever they change (but only after initial mount)
   useEffect(() => {
-    if (posts.length > 0) {
-      localStorage.setItem('cabin_posts', JSON.stringify(posts))
+    if (mounted && posts.length >= 0) {
+      saveToStorage('cabin_posts', posts)
     }
-  }, [posts])
+  }, [posts, mounted])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -87,7 +85,9 @@ export default function CabinBoard() {
       status: 'open',
       comments: [],
     }
-    setPosts([newPost, ...posts])
+    const updatedPosts = [newPost, ...posts]
+    setPosts(updatedPosts)
+    console.log('✅ Post added:', newPost)
     setShowPostForm(false)
     setFormData({ author: 'Mark', title: '', content: '' })
   }
@@ -209,7 +209,7 @@ export default function CabinBoard() {
             )}
 
             {commentingOn === post.id ? (
-              <div className="mt-3 flex space-x-2">
+              <div className="mt-3 flex flex-col sm:flex-row gap-2">
                 <input
                   type="text"
                   value={commentText}
@@ -252,8 +252,8 @@ export default function CabinBoard() {
       </div>
 
       {showPostForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full m-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold">New Post</h3>
               <button
