@@ -38,7 +38,8 @@ export default function CabinBoard() {
     loadPosts()
     const channel = supabase
       .channel('posts_changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, (payload) => {
+        console.log('Post change detected:', payload)
         loadPosts()
       })
       .subscribe()
@@ -48,6 +49,7 @@ export default function CabinBoard() {
   }, [])
 
   const loadPosts = async () => {
+    console.log('Loading posts...')
     const { data, error } = await supabase
       .from('posts')
       .select('*')
@@ -55,6 +57,7 @@ export default function CabinBoard() {
     if (error) {
       console.error('Error loading posts:', error)
     } else if (data) {
+      console.log('Posts loaded:', data)
       // Sort: Open posts first (newest first), then resolved posts (newest first)
       const sortedPosts = data.sort((a, b) => {
         if (a.status === 'open' && b.status === 'done') return -1
@@ -85,18 +88,25 @@ export default function CabinBoard() {
     } else {
       setShowPostForm(false)
       setFormData({ author: 'Kate', title: '', content: '' })
+      await loadPosts() // Force reload
     }
   }
 
   const toggleStatus = async (id: string, currentStatus: string) => {
+    console.log('Toggling status for post:', id, 'from', currentStatus)
     const newStatus = currentStatus === 'open' ? 'done' : 'open'
+    
     const { error } = await supabase
       .from('posts')
       .update({ status: newStatus })
       .eq('id', id)
+    
     if (error) {
       console.error('Error updating status:', error)
-      alert('Failed to update status')
+      alert('Failed to update status: ' + error.message)
+    } else {
+      console.log('Status updated successfully to:', newStatus)
+      await loadPosts() // Force reload
     }
   }
 
@@ -121,10 +131,13 @@ export default function CabinBoard() {
     } else {
       setCommentText('')
       setCommentingOn(null)
+      await loadPosts() // Force reload
     }
   }
 
   const deletePost = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this post?')) return
+    
     const { error } = await supabase
       .from('posts')
       .delete()
@@ -132,6 +145,8 @@ export default function CabinBoard() {
     if (error) {
       console.error('Error deleting post:', error)
       alert('Failed to delete post')
+    } else {
+      await loadPosts() // Force reload
     }
   }
 
@@ -177,7 +192,7 @@ export default function CabinBoard() {
                       className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md bg-[#7a8c7e20] text-[#7a8c7e] hover:bg-[#7a8c7e30]"
                     >
                       <Check size={16} />
-                      <span>Resolved</span>
+                      <span>Mark Resolved</span>
                     </button>
                     <button
                       onClick={() => deletePost(post.id)}

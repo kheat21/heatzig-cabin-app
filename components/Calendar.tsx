@@ -80,7 +80,6 @@ export default function Calendar() {
   useEffect(() => {
     loadTrips()
     
-    // Set up real-time subscription
     const channel = supabase
       .channel('trips_changes')
       .on('postgres_changes', { 
@@ -89,7 +88,7 @@ export default function Calendar() {
         table: 'trips' 
       }, (payload) => {
         console.log('Trip change detected:', payload)
-        loadTrips() // Reload all trips on any change
+        loadTrips()
       })
       .subscribe()
 
@@ -175,7 +174,6 @@ export default function Calendar() {
     e.preventDefault()
     setErrorMessage('')
     
-    // Validate dates
     if (formData.startDate && formData.endDate) {
       const start = new Date(formData.startDate)
       const end = new Date(formData.endDate)
@@ -216,7 +214,6 @@ export default function Calendar() {
           createdBy: '',
           notes: '',
         })
-        // Force reload
         await loadTrips()
       }
     } else {
@@ -246,7 +243,6 @@ export default function Calendar() {
           createdBy: '',
           notes: '',
         })
-        // Force reload
         await loadTrips()
       }
     }
@@ -288,6 +284,11 @@ export default function Calendar() {
     if (dayTrips.length > 0) {
       setSelectedTrip(dayTrips[0])
     }
+  }
+
+  const handleTripClick = (e: React.MouseEvent, trip: Trip) => {
+    e.stopPropagation()
+    setSelectedTrip(trip)
   }
 
   const calculateTripPositions = (calendarDays: Date[], trips: Trip[]): PositionedTrip[][] => {
@@ -406,7 +407,7 @@ export default function Calendar() {
                         textOverflow: 'ellipsis',
                         boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                       }}
-                      onClick={() => setSelectedTrip(posTrip.trip)}
+                      onClick={(e) => handleTripClick(e, posTrip.trip)}
                     >
                       {posTrip.trip.trip_name || posTrip.trip.family_members.join(', ')}
                     </div>
@@ -422,9 +423,6 @@ export default function Calendar() {
 
   const upcomingTrips = getUpcomingTrips()
   const gridClass = viewMode === '1month' ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2'
-
-  console.log('Total trips:', trips.length)
-  console.log('Upcoming trips:', upcomingTrips.length)
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -536,8 +534,284 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* ... rest of the component (selectedTrip modal and form modal) stays the same ... */}
-      {/* I'll include it but it's too long, keeping same code */}
+      {/* Trip Details Modal */}
+      {selectedTrip && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-3xl font-medium text-gray-800 tracking-tight">Trip Details</h3>
+              <button
+                onClick={() => setSelectedTrip(null)}
+                className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
+              >
+                <X size={24} className="text-gray-600" />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {selectedTrip.trip_name && (
+                <div>
+                  <h4 className="text-2xl font-medium tracking-tight" style={{ color: selectedTrip.color }}>
+                    {selectedTrip.trip_name}
+                  </h4>
+                </div>
+              )}
+
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <CalendarIcon size={22} className="text-[#7a8c7e]" />
+                <div>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Dates</p>
+                  <p className="font-medium">{format(parseISO(selectedTrip.start_date), 'MMM d, yyyy')} - {format(parseISO(selectedTrip.end_date), 'MMM d, yyyy')}</p>
+                </div>
+              </div>
+
+              <div className="flex items-start space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <Users size={22} className="text-[#7a8c7e] mt-1" />
+                <div className="flex-1">
+                  <p className="font-medium text-[#b8a696] text-sm mb-2">Attendees</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTrip.family_members.map(member => (
+                      <span key={member} className="px-4 py-2 rounded-full text-sm text-white font-medium shadow-sm" style={{ backgroundColor: getMemberColor(member) }}>
+                        {member}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <Users size={22} className="text-[#7a8c7e]" />
+                <div>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Guest Count</p>
+                  <p className="font-medium">{selectedTrip.guest_count} people</p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <User size={22} className="text-[#7a8c7e]" />
+                <div>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Created By</p>
+                  <p className="font-medium">{selectedTrip.created_by}</p>
+                </div>
+              </div>
+
+              {selectedTrip.notes && (
+                <div className="flex items-start space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                  <StickyNote size={22} className="text-[#7a8c7e] mt-1" />
+                  <div>
+                    <p className="font-medium text-[#b8a696] text-sm mb-1">Notes</p>
+                    <p className="text-gray-600 font-medium">{selectedTrip.notes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-4 mt-8">
+              <button
+                onClick={() => handleEdit(selectedTrip)}
+                className="flex-1 bg-[#7a8c7e] text-white py-4 rounded-2xl font-medium hover:bg-[#6d7a6e] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                <Edit size={18} />
+                Edit Trip
+              </button>
+              <button
+                onClick={() => handleDelete(selectedTrip.id)}
+                className="flex-1 bg-red-500 text-white py-4 rounded-2xl font-medium hover:bg-red-600 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                <Trash2 size={18} />
+                Delete
+              </button>
+            </div>
+
+            <button
+              onClick={() => setSelectedTrip(null)}
+              className="w-full mt-4 bg-[#7a8c7e20] text-[#7a8c7e] py-4 rounded-2xl font-medium hover:bg-[#7a8c7e30] transition-all duration-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Trip Form Modal (continues in next part...) */}
+      {showTripForm && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-3xl font-medium text-gray-800 tracking-tight">
+                {editingTrip ? 'Edit Trip' : 'Plan a Trip'}
+              </h3>
+              <button
+                onClick={() => {
+                  setShowTripForm(false)
+                  setEditingTrip(null)
+                  setErrorMessage('')
+                  setFormData({
+                    tripName: '',
+                    familyMembers: [],
+                    startDate: '',
+                    endDate: '',
+                    guestCount: 1,
+                    createdBy: '',
+                    notes: '',
+                  })
+                }}
+                className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {errorMessage && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                <p className="text-sm text-red-800 font-medium">{errorMessage}</p>
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Trip Name <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={formData.tripName}
+                  onChange={(e) => setFormData({ ...formData, tripName: e.target.value })}
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                  placeholder="e.g., Spring Break, Dad's Birthday"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                    Arrival <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                    Departure <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#b8a696] mb-3 tracking-wide uppercase">Who's Going</label>
+                <div className="flex flex-wrap gap-3">
+                  {FAMILY_MEMBERS.map((member) => (
+                    <button
+                      key={member.name}
+                      type="button"
+                      onClick={() => toggleFamilyMember(member.name)}
+                      className={`px-5 py-2.5 rounded-full font-medium transition-all duration-200 shadow-sm ${
+                        formData.familyMembers.includes(member.name)
+                          ? 'text-white shadow-md scale-105'
+                          : 'bg-white/60 backdrop-blur-sm text-gray-700 hover:bg-white hover:shadow-md'
+                      }`}
+                      style={formData.familyMembers.includes(member.name) ? { backgroundColor: member.color } : {}}
+                    >
+                      {member.name}
+                    </button>
+                  ))}
+                </div>
+                {formData.familyMembers.length === 0 && (
+                  <p className="text-xs text-[#b8a696] mt-3 font-medium">Tap names to add them to this trip</p>
+                )}
+                {formData.familyMembers.length > 0 && (
+                  <p className="text-xs text-green-600 mt-3 font-medium">✓ {formData.familyMembers.length} {formData.familyMembers.length === 1 ? 'person' : 'people'} selected</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Guest Count <span className="text-gray-400">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  value={formData.guestCount}
+                  onChange={(e) => setFormData({ ...formData, guestCount: parseInt(e.target.value) })}
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                  placeholder="Total headcount, e.g. 6"
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Created By <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={formData.createdBy}
+                  onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                  required
+                >
+                  <option value="">Pick your name</option>
+                  {FAMILY_MEMBERS.map((member) => (
+                    <option key={member.name} value={member.name}>{member.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Notes <span className="text-gray-400">(optional)</span>
+                </label>
+                <textarea
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                  rows={4}
+                  placeholder="Any details for the family..."
+                />
+              </div>
+
+              <div className="flex space-x-4 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTripForm(false)
+                    setEditingTrip(null)
+                    setErrorMessage('')
+                    setFormData({
+                      tripName: '',
+                      familyMembers: [],
+                      startDate: '',
+                      endDate: '',
+                      guestCount: 1,
+                      createdBy: '',
+                      notes: '',
+                    })
+                  }}
+                  className="flex-1 bg-[#7a8c7e20] text-[#7a8c7e] py-4 rounded-2xl font-medium hover:bg-[#7a8c7e30] transition-all duration-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-[#7a8c7e] text-white py-4 rounded-2xl font-medium hover:bg-[#6d7a6e] transition-all duration-200 shadow-lg hover:shadow-xl"
+                >
+                  {editingTrip ? 'Save Changes' : 'Create Trip'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
