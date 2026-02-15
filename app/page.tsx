@@ -1,102 +1,111 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Calendar from '@/components/Calendar'
 import CabinBoard from '@/components/CabinBoard'
-import WeatherDashboard from '@/components/WeatherDashboard'
-import LoginScreen from '@/components/LoginScreen'
-import { CalendarDays, MessageSquare, Cloud, LogOut } from 'lucide-react'
+import Weather from '@/components/Weather'
+import Concierge from '@/components/Concierge'
+import PasswordProtection from '@/components/PasswordProtection'
+import Image from 'next/image'
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<'calendar' | 'board' | 'weather'>('calendar')
+  const [activeTab, setActiveTab] = useState<'calendar' | 'board' | 'weather' | 'concierge'>('calendar')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  useEffect(() => {
-    // Check if user is already logged in
-    const loggedIn = localStorage.getItem('heatzig_logged_in')
-    if (loggedIn === 'true') {
-      setIsAuthenticated(true)
-    }
-  }, [])
-
-  const handleLogin = () => {
-    localStorage.setItem('heatzig_logged_in', 'true')
-    setIsAuthenticated(true)
-  }
-
-  const handleLogout = () => {
-    localStorage.removeItem('heatzig_logged_in')
-    setIsAuthenticated(false)
-  }
-
   if (!isAuthenticated) {
-    return <LoginScreen onLogin={handleLogin} />
+    return <PasswordProtection onAuthenticate={() => setIsAuthenticated(true)} />
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <header className="bg-white shadow-md">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-800">Heatzig Cabin Calendar</h1>
-              <p className="text-gray-600 mt-2">Making it easy!</p>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center space-x-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition text-gray-700 flex-shrink-0"
-            >
-              <LogOut size={18} />
-              <span className="text-sm font-medium">Logout</span>
-            </button>
-          </div>
+    <main className="min-h-screen bg-gradient-to-br from-[#fafaf8] via-[#f5f3f0] to-[#ebe8e3]">
+      {/* Hero Section - Fixed Height */}
+      <div className="relative h-[50vh] md:h-[60vh] overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/images/aspen-hero.jpg"
+            alt="Park City Mountains"
+            fill
+            className="object-cover"
+            priority
+            quality={100}
+          />
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-black/20 to-[#fafaf8]"></div>
         </div>
-      </header>
 
-      <div className="container mx-auto px-4 mt-6">
-        <div className="bg-white rounded-lg p-2 shadow-md">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
-                activeTab === 'calendar'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <CalendarDays size={20} />
-              <span className="font-semibold">Calendar</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('board')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
-                activeTab === 'board'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <MessageSquare size={20} />
-              <span className="font-semibold">Message Board</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('weather')}
-              className={`flex items-center space-x-2 px-6 py-3 rounded-md transition-all ${
-                activeTab === 'weather'
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              <Cloud size={20} />
-              <span className="font-semibold">Weather</span>
-            </button>
+        {/* Hero Content */}
+        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center px-4">
+          <div className="animate-fade-in-up">
+            <h1 className="font-serif text-5xl md:text-7xl font-bold text-white mb-4 tracking-tight drop-shadow-2xl">
+              Heatzig Cabin
+            </h1>
+            <div className="flex items-center justify-center space-x-3">
+              <div className="h-px w-12 bg-gold"></div>
+              <p className="text-gold text-lg md:text-xl font-medium tracking-widest uppercase">
+                Park City, Utah
+              </p>
+              <div className="h-px w-12 bg-gold"></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-6">
-        {activeTab === 'calendar' && <Calendar />}
-        {activeTab === 'board' && <CabinBoard />}
-        {activeTab === 'weather' && <WeatherDashboard />}
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
+        {/* Sticky Tab Navigation */}
+        <div className="sticky top-4 z-40 flex justify-center mb-8 animate-fade-in overflow-x-auto">
+          <div className="glass rounded-3xl p-2 shadow-2xl inline-flex gap-2 border border-white/20">
+            <button
+              onClick={() => setActiveTab('calendar')}
+              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                activeTab === 'calendar'
+                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+              }`}
+            >
+              📅 Calendar
+            </button>
+            <button
+              onClick={() => setActiveTab('board')}
+              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                activeTab === 'board'
+                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+              }`}
+            >
+              💬 Message Board
+            </button>
+            <button
+              onClick={() => setActiveTab('weather')}
+              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                activeTab === 'weather'
+                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+              }`}
+            >
+              ☀️ Weather
+            </button>
+            <button
+              onClick={() => setActiveTab('concierge')}
+              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                activeTab === 'concierge'
+                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+              }`}
+            >
+              ✨ Concierge
+            </button>
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="animate-scale-in pb-12">
+          {activeTab === 'calendar' && <Calendar />}
+          {activeTab === 'board' && <CabinBoard />}
+          {activeTab === 'weather' && <Weather />}
+          {activeTab === 'concierge' && <Concierge />}
+        </div>
       </div>
     </main>
   )

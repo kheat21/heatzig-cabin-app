@@ -76,18 +76,14 @@ export default function Calendar() {
     notes: '',
   })
 
-  // Load trips from Supabase
   useEffect(() => {
     loadTrips()
-
-    // Subscribe to realtime changes
     const channel = supabase
       .channel('trips_changes')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => {
         loadTrips()
       })
       .subscribe()
-
     return () => {
       supabase.removeChannel(channel)
     }
@@ -98,7 +94,6 @@ export default function Calendar() {
       .from('trips')
       .select('*')
       .order('start_date', { ascending: true })
-
     if (error) {
       console.error('Error loading trips:', error)
     } else if (data) {
@@ -166,7 +161,6 @@ export default function Calendar() {
     const primaryMember = formData.familyMembers[0] || formData.createdBy
     
     if (editingTrip) {
-      // Update existing trip
       const { error } = await supabase
         .from('trips')
         .update({
@@ -180,7 +174,6 @@ export default function Calendar() {
           color: getMemberColor(primaryMember),
         })
         .eq('id', editingTrip.id)
-
       if (error) {
         console.error('Error updating trip:', error)
         alert('Failed to update trip')
@@ -188,7 +181,6 @@ export default function Calendar() {
         setEditingTrip(null)
       }
     } else {
-      // Create new trip
       const { error } = await supabase
         .from('trips')
         .insert([{
@@ -201,7 +193,6 @@ export default function Calendar() {
           notes: formData.notes,
           color: getMemberColor(primaryMember),
         }])
-
       if (error) {
         console.error('Error creating trip:', error)
         alert('Failed to create trip')
@@ -241,7 +232,6 @@ export default function Calendar() {
         .from('trips')
         .delete()
         .eq('id', tripId)
-
       if (error) {
         console.error('Error deleting trip:', error)
         alert('Failed to delete trip')
@@ -260,39 +250,31 @@ export default function Calendar() {
 
   const calculateTripPositions = (calendarDays: Date[], trips: Trip[]): PositionedTrip[][] => {
     const weeks: PositionedTrip[][] = []
-    
     for (let weekStart = 0; weekStart < calendarDays.length; weekStart += 7) {
       const weekDays = calendarDays.slice(weekStart, weekStart + 7)
       const weekTrips: PositionedTrip[] = []
-      
       trips.forEach(trip => {
         const tripStart = parseISO(trip.start_date)
         const tripEnd = parseISO(trip.end_date)
-        
         const weekStartDate = weekDays[0]
         const weekEndDate = weekDays[6]
-        
         if (isWithinInterval(tripStart, { start: weekStartDate, end: weekEndDate }) ||
             isWithinInterval(tripEnd, { start: weekStartDate, end: weekEndDate }) ||
             (isBefore(tripStart, weekStartDate) && isAfter(tripEnd, weekEndDate))) {
-          
           let startCol = 0
           let endCol = 6
-          
           for (let i = 0; i < weekDays.length; i++) {
             if (isSameDay(weekDays[i], tripStart) || isAfter(weekDays[i], tripStart)) {
               startCol = i
               break
             }
           }
-          
           for (let i = weekDays.length - 1; i >= 0; i--) {
             if (isSameDay(weekDays[i], tripEnd) || isBefore(weekDays[i], tripEnd)) {
               endCol = i
               break
             }
           }
-          
           weekTrips.push({
             trip,
             startCol,
@@ -301,10 +283,8 @@ export default function Calendar() {
           })
         }
       })
-      
       weeks.push(weekTrips)
     }
-    
     return weeks
   }
 
@@ -314,23 +294,22 @@ export default function Calendar() {
     const calendarStart = startOfWeek(monthStart)
     const calendarEnd = endOfWeek(monthEnd)
     const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
-    
     const tripPositions = calculateTripPositions(calendarDays, trips)
 
     return (
-      <div key={format(monthDate, 'yyyy-MM')} className="bg-gray-50 rounded-lg p-4">
-        <h3 className="text-xl font-bold text-center mb-4">{format(monthDate, 'MMMM yyyy')}</h3>
+      <div key={format(monthDate, 'yyyy-MM')} className="backdrop-blur-sm bg-white/40 rounded-2xl p-8 shadow-lg">
+        <h3 className="text-2xl font-medium text-gray-800 text-center mb-6 tracking-tight">{format(monthDate, 'MMMM yyyy')}</h3>
         
         <div className="relative">
-          <div className="grid grid-cols-7 gap-2 mb-2">
+          <div className="grid grid-cols-7 gap-3 mb-3">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-              <div key={day} className="text-center font-semibold text-gray-600 py-2 text-xs">
+              <div key={day} className="text-center font-medium text-[#b8a696] py-3 text-xs tracking-wide uppercase">
                 {day}
               </div>
             ))}
           </div>
           
-          <div className="grid grid-cols-7 gap-2">
+          <div className="grid grid-cols-7 gap-3">
             {calendarDays.map((day, idx) => {
               const holiday = getHolidayForDay(day)
               const isCurrentMonth = isSameMonth(day, monthDate)
@@ -340,15 +319,15 @@ export default function Calendar() {
                 <div
                   key={idx}
                   onClick={() => handleDayClick(day)}
-                  className={`min-h-24 p-2 border rounded-lg transition-all cursor-pointer relative ${
-                    isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-100'
-                  } ${isToday ? 'ring-2 ring-blue-500' : ''} hover:shadow-md`}
+                  className={`min-h-28 p-4 rounded-2xl transition-all duration-200 cursor-pointer relative ${
+                    isCurrentMonth ? 'bg-white shadow-md hover:shadow-lg hover:scale-[1.02]' : 'bg-[#7a8c7e20]'
+                  } ${isToday ? 'ring-2 ring-[#7a8c7e] ring-offset-2' : ''}`}
                 >
-                  <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
+                  <div className={`text-sm font-medium mb-2 ${isToday ? 'text-[#7a8c7e]' : 'text-gray-700'}`}>
                     {format(day, 'd')}
                   </div>
                   {holiday && (
-                    <div className="text-xs text-red-600 font-semibold bg-red-50 px-1 py-0.5 rounded truncate">
+                    <div className="text-xs text-red-700 font-medium bg-red-50/80 backdrop-blur-sm px-2 py-1 rounded-lg truncate">
                       {holiday.name}
                     </div>
                   )}
@@ -357,9 +336,9 @@ export default function Calendar() {
             })}
           </div>
           
-          <div className="absolute top-12 left-0 right-0 pointer-events-none" style={{ zIndex: 10 }}>
+          <div className="absolute top-16 left-0 right-0 pointer-events-none" style={{ zIndex: 10 }}>
             {tripPositions.map((weekTrips, weekIdx) => (
-              <div key={weekIdx} className="relative" style={{ height: '6.5rem', marginBottom: '0.5rem' }}>
+              <div key={weekIdx} className="relative" style={{ height: '7.5rem', marginBottom: '0.75rem' }}>
                 {weekTrips.map((posTrip, tripIdx) => {
                   const width = ((posTrip.endCol - posTrip.startCol + 1) / 7) * 100
                   const left = (posTrip.startCol / 7) * 100
@@ -367,21 +346,23 @@ export default function Calendar() {
                   return (
                     <div
                       key={posTrip.trip.id}
-                      className="absolute pointer-events-auto cursor-pointer hover:opacity-90 transition"
+                      className="absolute pointer-events-auto cursor-pointer hover:scale-[1.02] transition-all duration-200 backdrop-blur-sm"
                       style={{
-                        left: `calc(${left}% + ${posTrip.startCol * 0.5}rem)`,
-                        width: `calc(${width}% - ${0.5}rem)`,
-                        top: `${2.5 + (tripIdx * 1.75)}rem`,
-                        backgroundColor: posTrip.trip.color,
-                        height: '1.5rem',
-                        borderRadius: '0.375rem',
-                        padding: '0.25rem 0.5rem',
+                        left: `calc(${left}% + ${posTrip.startCol * 0.75}rem)`,
+                        width: `calc(${width}% - ${0.75}rem)`,
+                        top: `${3 + (tripIdx * 2)}rem`,
+                        background: `linear-gradient(135deg, ${posTrip.trip.color}ee, ${posTrip.trip.color})`,
+                        borderLeft: `3px solid ${posTrip.trip.color}`,
+                        height: '1.75rem',
+                        borderRadius: '1rem',
+                        padding: '0.375rem 0.75rem',
                         color: 'white',
                         fontSize: '0.75rem',
-                        fontWeight: '600',
+                        fontWeight: '500',
                         overflow: 'hidden',
                         whiteSpace: 'nowrap',
                         textOverflow: 'ellipsis',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                       }}
                       onClick={() => setSelectedTrip(posTrip.trip)}
                     >
@@ -401,41 +382,41 @@ export default function Calendar() {
   const gridClass = viewMode === '1month' ? 'grid-cols-1' : 'grid-cols-1 xl:grid-cols-2'
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
-          <div className="flex items-center space-x-4">
-            <button onClick={prevPeriod} className="p-2 hover:bg-gray-100 rounded-full transition">
-              <ChevronLeft size={24} />
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="lg:col-span-3 backdrop-blur-sm bg-white/60 rounded-2xl shadow-xl p-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-6">
+          <div className="flex items-center space-x-6">
+            <button onClick={prevPeriod} className="p-3 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200">
+              <ChevronLeft size={24} className="text-[#7a8c7e]" />
             </button>
-            <h2 className="text-3xl font-bold text-gray-800">{format(currentDate, 'yyyy')}</h2>
-            <button onClick={nextPeriod} className="p-2 hover:bg-gray-100 rounded-full transition">
-              <ChevronRight size={24} />
+            <h2 className="text-3xl font-medium text-gray-800 tracking-tight">{format(currentDate, 'yyyy')}</h2>
+            <button onClick={nextPeriod} className="p-3 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200">
+              <ChevronRight size={24} className="text-[#7a8c7e]" />
             </button>
           </div>
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
-            <div className="flex bg-gray-100 rounded-lg p-1 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex bg-[#7a8c7e20] backdrop-blur-sm rounded-2xl p-1.5 w-full sm:w-auto shadow-sm">
               <button
                 onClick={() => setViewMode('1month')}
-                className={`px-4 py-2 rounded font-medium transition ${
-                  viewMode === '1month' ? 'bg-white shadow-sm' : 'text-gray-600'
+                className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                  viewMode === '1month' ? 'bg-white shadow-md text-[#7a8c7e]' : 'text-[#b8a696] hover:text-[#7a8c7e]'
                 }`}
               >
                 1 Month
               </button>
               <button
                 onClick={() => setViewMode('2month')}
-                className={`px-4 py-2 rounded font-medium transition ${
-                  viewMode === '2month' ? 'bg-white shadow-sm' : 'text-gray-600'
+                className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                  viewMode === '2month' ? 'bg-white shadow-md text-[#7a8c7e]' : 'text-[#b8a696] hover:text-[#7a8c7e]'
                 }`}
               >
                 2 Months
               </button>
               <button
                 onClick={() => setViewMode('4month')}
-                className={`px-4 py-2 rounded font-medium transition ${
-                  viewMode === '4month' ? 'bg-white shadow-sm' : 'text-gray-600'
+                className={`px-5 py-2.5 rounded-xl font-medium transition-all duration-200 ${
+                  viewMode === '4month' ? 'bg-white shadow-md text-[#7a8c7e]' : 'text-[#b8a696] hover:text-[#7a8c7e]'
                 }`}
               >
                 4 Months
@@ -444,23 +425,23 @@ export default function Calendar() {
             
             <button
               onClick={() => setShowTripForm(true)}
-              className="bg-[#7fa895] hover:bg-[#6d9280] text-white px-6 py-3 rounded-lg font-semibold transition shadow-md w-full sm:w-auto"
+              className="bg-[#7a8c7e] hover:bg-[#6d7a6e] text-white px-8 py-3 rounded-2xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-[1.02] w-full sm:w-auto tracking-tight"
             >
               + Plan a Trip
             </button>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 mb-6">
+        <div className="flex flex-wrap gap-4 mb-8">
           {FAMILY_MEMBERS.map((member) => (
-            <div key={member.name} className="flex items-center space-x-2">
-              <div className="w-4 h-4 rounded" style={{ backgroundColor: member.color }}></div>
-              <span className="text-sm">{member.name}</span>
+            <div key={member.name} className="flex items-center space-x-2 bg-white/60 backdrop-blur-sm px-4 py-2 rounded-full shadow-sm">
+              <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: member.color }}></div>
+              <span className="text-sm font-medium text-gray-700">{member.name}</span>
             </div>
           ))}
         </div>
 
-        <div className={`grid ${gridClass} gap-6`}>
+        <div className={`grid ${gridClass} gap-8`}>
           {Array.from({ length: getMonthsToShow() }, (_, i) => 
             renderMonth(addMonths(currentDate, i))
           )}
@@ -468,40 +449,40 @@ export default function Calendar() {
       </div>
 
       <div className="lg:col-span-1">
-        <div className="bg-white rounded-xl shadow-lg p-6 sticky top-6">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Upcoming Trips:</h3>
+        <div className="backdrop-blur-sm bg-white/60 rounded-2xl shadow-xl p-8 sticky top-6">
+          <h3 className="text-2xl font-medium text-gray-800 mb-6 tracking-tight">Upcoming Trips</h3>
           
           {upcomingTrips.length > 0 ? (
             <div className="space-y-4">
               {upcomingTrips.map((trip) => (
                 <div
                   key={trip.id}
-                  className="border-l-4 pl-4 py-2 cursor-pointer hover:bg-gray-50 transition rounded-r"
-                  style={{ borderLeftColor: trip.color }}
+                  className="bg-white rounded-2xl p-5 cursor-pointer hover:shadow-lg transition-all duration-200 hover:scale-[1.02] shadow-md"
+                  style={{ borderLeft: `3px solid ${trip.color}` }}
                   onClick={() => setSelectedTrip(trip)}
                 >
-                  <div className="text-sm font-semibold text-gray-600 mb-1">
+                  <div className="text-sm font-medium text-[#b8a696] mb-2 tracking-wide">
                     {format(parseISO(trip.start_date), 'MMM d')} - {format(parseISO(trip.end_date), 'MMM d')}
                   </div>
-                  <div className="font-bold text-gray-800 mb-2">
+                  <div className="font-medium text-gray-800 mb-3 text-lg tracking-tight">
                     {trip.trip_name || 'Cabin Trip'}
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
                     {trip.family_members.join(', ')}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-[#b8a696] font-medium">
                     Total Guests: {trip.guest_count}
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <CalendarIcon size={48} className="mx-auto mb-3 text-gray-300" />
-              <p className="text-sm">No upcoming trips</p>
+            <div className="text-center py-12 text-gray-500">
+              <CalendarIcon size={48} className="mx-auto mb-4 text-[#b8a696]" />
+              <p className="text-sm font-medium">No upcoming trips</p>
               <button
                 onClick={() => setShowTripForm(true)}
-                className="mt-4 text-blue-600 hover:text-blue-700 font-medium text-sm"
+                className="mt-6 text-[#7a8c7e] hover:text-[#6d7a6e] font-medium text-sm transition-colors"
               >
                 Plan your first trip
               </button>
@@ -511,42 +492,42 @@ export default function Calendar() {
       </div>
 
       {selectedTrip && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">Trip Details</h3>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-lg w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-3xl font-medium text-gray-800 tracking-tight">Trip Details</h3>
               <button
                 onClick={() => setSelectedTrip(null)}
-                className="p-2 hover:bg-gray-100 rounded-full transition"
+                className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
               >
-                <X size={24} />
+                <X size={24} className="text-gray-600" />
               </button>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               {selectedTrip.trip_name && (
                 <div>
-                  <h4 className="text-lg font-bold" style={{ color: selectedTrip.color }}>
+                  <h4 className="text-2xl font-medium tracking-tight" style={{ color: selectedTrip.color }}>
                     {selectedTrip.trip_name}
                   </h4>
                 </div>
               )}
 
-              <div className="flex items-center space-x-3 text-gray-700">
-                <CalendarIcon size={20} className="text-gray-500" />
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <CalendarIcon size={22} className="text-[#7a8c7e]" />
                 <div>
-                  <p className="font-semibold">Dates</p>
-                  <p>{format(parseISO(selectedTrip.start_date), 'MMM d, yyyy')} - {format(parseISO(selectedTrip.end_date), 'MMM d, yyyy')}</p>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Dates</p>
+                  <p className="font-medium">{format(parseISO(selectedTrip.start_date), 'MMM d, yyyy')} - {format(parseISO(selectedTrip.end_date), 'MMM d, yyyy')}</p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 text-gray-700">
-                <Users size={20} className="text-gray-500" />
-                <div>
-                  <p className="font-semibold">Attendees</p>
-                  <div className="flex flex-wrap gap-2 mt-1">
+              <div className="flex items-start space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <Users size={22} className="text-[#7a8c7e] mt-1" />
+                <div className="flex-1">
+                  <p className="font-medium text-[#b8a696] text-sm mb-2">Attendees</p>
+                  <div className="flex flex-wrap gap-2">
                     {selectedTrip.family_members.map(member => (
-                      <span key={member} className="px-3 py-1 rounded-full text-sm text-white" style={{ backgroundColor: getMemberColor(member) }}>
+                      <span key={member} className="px-4 py-2 rounded-full text-sm text-white font-medium shadow-sm" style={{ backgroundColor: getMemberColor(member) }}>
                         {member}
                       </span>
                     ))}
@@ -554,44 +535,44 @@ export default function Calendar() {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 text-gray-700">
-                <Users size={20} className="text-gray-500" />
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <Users size={22} className="text-[#7a8c7e]" />
                 <div>
-                  <p className="font-semibold">Guest Count</p>
-                  <p>{selectedTrip.guest_count} people</p>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Guest Count</p>
+                  <p className="font-medium">{selectedTrip.guest_count} people</p>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-3 text-gray-700">
-                <User size={20} className="text-gray-500" />
+              <div className="flex items-center space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                <User size={22} className="text-[#7a8c7e]" />
                 <div>
-                  <p className="font-semibold">Created By</p>
-                  <p>{selectedTrip.created_by}</p>
+                  <p className="font-medium text-[#b8a696] text-sm mb-1">Created By</p>
+                  <p className="font-medium">{selectedTrip.created_by}</p>
                 </div>
               </div>
 
               {selectedTrip.notes && (
-                <div className="flex items-start space-x-3 text-gray-700">
-                  <StickyNote size={20} className="text-gray-500 mt-1" />
+                <div className="flex items-start space-x-4 text-gray-700 bg-white/60 backdrop-blur-sm p-4 rounded-2xl">
+                  <StickyNote size={22} className="text-[#7a8c7e] mt-1" />
                   <div>
-                    <p className="font-semibold">Notes</p>
-                    <p className="text-gray-600 mt-1">{selectedTrip.notes}</p>
+                    <p className="font-medium text-[#b8a696] text-sm mb-1">Notes</p>
+                    <p className="text-gray-600 font-medium">{selectedTrip.notes}</p>
                   </div>
                 </div>
               )}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-4 mt-8">
               <button
                 onClick={() => handleEdit(selectedTrip)}
-                className="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                className="flex-1 bg-[#7a8c7e] text-white py-4 rounded-2xl font-medium hover:bg-[#6d7a6e] transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
                 <Edit size={18} />
                 Edit Trip
               </button>
               <button
                 onClick={() => handleDelete(selectedTrip.id)}
-                className="flex-1 bg-red-600 text-white py-3 rounded-lg font-semibold hover:bg-red-700 transition flex items-center justify-center gap-2"
+                className="flex-1 bg-red-500 text-white py-4 rounded-2xl font-medium hover:bg-red-600 transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
                 <Trash2 size={18} />
                 Delete
@@ -600,7 +581,7 @@ export default function Calendar() {
 
             <button
               onClick={() => setSelectedTrip(null)}
-              className="w-full mt-3 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
+              className="w-full mt-4 bg-[#7a8c7e20] text-[#7a8c7e] py-4 rounded-2xl font-medium hover:bg-[#7a8c7e30] transition-all duration-200"
             >
               Close
             </button>
@@ -609,10 +590,10 @@ export default function Calendar() {
       )}
 
       {showTripForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-2xl font-bold text-gray-800">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-xl w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-8">
+              <h3 className="text-3xl font-medium text-gray-800 tracking-tight">
                 {editingTrip ? 'Edit Trip' : 'Plan a Trip'}
               </h3>
               <button
@@ -629,7 +610,7 @@ export default function Calendar() {
                     notes: '',
                   })
                 }}
-                className="p-2 hover:bg-gray-100 rounded-full transition"
+                className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
               >
                 <X size={24} />
               </button>
@@ -637,53 +618,53 @@ export default function Calendar() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-2">
-                  TRIP NAME <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Trip Name <span className="text-gray-400">(optional)</span>
                 </label>
                 <input
                   type="text"
                   value={formData.tripName}
                   onChange={(e) => setFormData({ ...formData, tripName: e.target.value })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                   placeholder="e.g., Spring Break, Dad's Birthday"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-600 mb-2">ARRIVAL</label>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Arrival</label>
                   <input
                     type="date"
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-600 mb-2">DEPARTURE</label>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Departure</label>
                   <input
                     type="date"
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                    className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                    className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-3">WHO'S GOING</label>
-                <div className="flex flex-wrap gap-2">
+                <label className="block text-sm font-medium text-[#b8a696] mb-3 tracking-wide uppercase">Who's Going</label>
+                <div className="flex flex-wrap gap-3">
                   {FAMILY_MEMBERS.map((member) => (
                     <button
                       key={member.name}
                       type="button"
                       onClick={() => toggleFamilyMember(member.name)}
-                      className={`px-4 py-2 rounded-full font-medium transition ${
+                      className={`px-5 py-2.5 rounded-full font-medium transition-all duration-200 shadow-sm ${
                         formData.familyMembers.includes(member.name)
-                          ? 'text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'text-white shadow-md scale-105'
+                          : 'bg-white/60 backdrop-blur-sm text-gray-700 hover:bg-white hover:shadow-md'
                       }`}
                       style={formData.familyMembers.includes(member.name) ? { backgroundColor: member.color } : {}}
                     >
@@ -691,29 +672,29 @@ export default function Calendar() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">Tap names to add them to this trip</p>
+                <p className="text-xs text-[#b8a696] mt-3 font-medium">Tap names to add them to this trip</p>
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-2">
-                  GUEST COUNT <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Guest Count <span className="text-gray-400">(optional)</span>
                 </label>
                 <input
                   type="number"
                   value={formData.guestCount}
                   onChange={(e) => setFormData({ ...formData, guestCount: parseInt(e.target.value) })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                   placeholder="Total headcount, e.g. 6"
                   min="1"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-2">CREATED BY</label>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Created By</label>
                 <select
                   value={formData.createdBy}
                   onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                   required
                 >
                   <option value="">Pick your name</option>
@@ -724,19 +705,19 @@ export default function Calendar() {
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-600 mb-2">
-                  NOTES <span className="text-gray-400">(optional)</span>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Notes <span className="text-gray-400">(optional)</span>
                 </label>
                 <textarea
                   value={formData.notes}
                   onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full border-2 border-gray-200 rounded-lg px-4 py-3 focus:outline-none focus:border-blue-500 transition"
+                  className="w-full bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
                   rows={4}
                   placeholder="Any details for the family..."
                 />
               </div>
 
-              <div className="flex space-x-3 pt-4">
+              <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
                   onClick={() => {
@@ -752,13 +733,13 @@ export default function Calendar() {
                       notes: '',
                     })
                   }}
-                  className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition"
+                  className="flex-1 bg-[#7a8c7e20] text-[#7a8c7e] py-4 rounded-2xl font-medium hover:bg-[#7a8c7e30] transition-all duration-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-[#7fa895] text-white py-3 rounded-lg font-semibold hover:bg-[#6d9280] transition shadow-md"
+                  className="flex-1 bg-[#7a8c7e] text-white py-4 rounded-2xl font-medium hover:bg-[#6d7a6e] transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   {editingTrip ? 'Save Changes' : 'Create Trip'}
                 </button>
