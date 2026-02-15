@@ -32,6 +32,7 @@ export default function CabinBoard() {
   })
   const [commentText, setCommentText] = useState('')
   const [commentingOn, setCommentingOn] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
 
   useEffect(() => {
     loadPosts()
@@ -60,6 +61,8 @@ export default function CabinBoard() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage('')
+    
     const { error } = await supabase
       .from('posts')
       .insert([{
@@ -69,9 +72,10 @@ export default function CabinBoard() {
         status: 'open',
         comments: [],
       }])
+    
     if (error) {
       console.error('Error creating post:', error)
-      alert('Failed to create post')
+      setErrorMessage(`Error: ${error.message}`)
     } else {
       setShowPostForm(false)
       setFormData({ author: 'Kate', title: '', content: '' })
@@ -139,134 +143,156 @@ export default function CabinBoard() {
       </div>
 
       <div className="space-y-6">
-        {posts.map((post) => (
-          <div
-            key={post.id}
-            className={`backdrop-blur-sm rounded-2xl p-6 transition-all duration-200 shadow-md hover:shadow-lg ${
-              post.status === 'done' ? 'opacity-60 bg-white/40' : 'bg-white/60'
-            }`}
-          >
-            <div className="flex justify-between items-start mb-4">
-              <div className="flex-1">
-                <h3 className="font-medium text-xl text-gray-800 mb-2 tracking-tight">{post.title}</h3>
-                <p className="text-sm text-[#b8a696] font-medium">
-                  by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
-                </p>
-              </div>
-              <div className="flex space-x-3">
-                <button
-                  onClick={() => toggleStatus(post.id, post.status)}
-                  className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${
-                    post.status === 'done'
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                      : 'bg-[#7a8c7e20] text-[#7a8c7e] hover:bg-[#7a8c7e30]'
-                  }`}
-                >
-                  {post.status === 'done' ? (
-                    <>
-                      <RotateCcw size={16} />
-                      <span>Reopen</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} />
-                      <span>Resolved</span>
-                    </>
-                  )}
-                </button>
-                <button
-                  onClick={() => deletePost(post.id)}
-                  className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-                >
-                  <Trash2 size={16} />
-                  <span>Remove</span>
-                </button>
-              </div>
-            </div>
-            
-            <p className="text-gray-700 mb-4 font-medium">{post.content}</p>
-            
-            {post.status === 'done' && (
-              <div className="inline-block bg-green-100 text-green-800 text-xs px-3 py-1.5 rounded-full mb-4 font-medium">
-                ✓ Resolved
-              </div>
-            )}
-
-            {post.comments.length > 0 && (
-              <div className="mt-6 space-y-3 bg-[#7a8c7e20] backdrop-blur-sm p-5 rounded-2xl">
-                <h4 className="font-medium text-sm flex items-center space-x-2 text-[#7a8c7e]">
-                  <MessageCircle size={16} />
-                  <span>Comments ({post.comments.length})</span>
-                </h4>
-                {post.comments.map((comment) => (
-                  <div key={comment.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-3 shadow-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#7a8c7e' }}>
-                    <p className="text-sm text-gray-800 font-medium mb-2">{comment.text}</p>
-                    <p className="text-xs text-[#b8a696] font-medium">
-                      {comment.author} • {format(new Date(comment.date), 'MMM d, yyyy')}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {commentingOn === post.id ? (
-              <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                <input
-                  type="text"
-                  value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  placeholder="Write a comment..."
-                  className="flex-1 bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      addComment(post.id)
-                    }
-                  }}
-                />
-                <button
-                  onClick={() => addComment(post.id)}
-                  className="bg-[#7a8c7e] text-white px-6 py-3 rounded-2xl hover:bg-[#6d7a6e] text-sm font-medium transition-all duration-200 shadow-md"
-                >
-                  Post
-                </button>
-                <button
-                  onClick={() => {
-                    setCommentingOn(null)
-                    setCommentText('')
-                  }}
-                  className="bg-[#7a8c7e20] text-[#7a8c7e] px-6 py-3 rounded-2xl hover:bg-[#7a8c7e30] text-sm font-medium transition-all duration-200"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setCommentingOn(post.id)}
-                className="mt-4 text-[#7a8c7e] hover:text-[#6d7a6e] text-sm flex items-center space-x-2 font-medium transition-colors"
-              >
-                <MessageCircle size={16} />
-                <span>Add comment</span>
-              </button>
-            )}
+        {posts.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <MessageCircle size={48} className="mx-auto mb-4 text-[#b8a696]" />
+            <p className="text-sm font-medium">No messages yet</p>
+            <button
+              onClick={() => setShowPostForm(true)}
+              className="mt-6 text-[#7a8c7e] hover:text-[#6d7a6e] font-medium text-sm transition-colors"
+            >
+              Create the first post
+            </button>
           </div>
-        ))}
+        ) : (
+          posts.map((post) => (
+            <div
+              key={post.id}
+              className={`backdrop-blur-sm rounded-2xl p-6 transition-all duration-200 shadow-md hover:shadow-lg ${
+                post.status === 'done' ? 'opacity-60 bg-white/40' : 'bg-white/60'
+              }`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex-1">
+                  <h3 className="font-medium text-xl text-gray-800 mb-2 tracking-tight">{post.title}</h3>
+                  <p className="text-sm text-[#b8a696] font-medium">
+                    by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
+                  </p>
+                </div>
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => toggleStatus(post.id, post.status)}
+                    className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${
+                      post.status === 'done'
+                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                        : 'bg-[#7a8c7e20] text-[#7a8c7e] hover:bg-[#7a8c7e30]'
+                    }`}
+                  >
+                    {post.status === 'done' ? (
+                      <>
+                        <RotateCcw size={16} />
+                        <span>Reopen</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} />
+                        <span>Resolved</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => deletePost(post.id)}
+                    className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                  >
+                    <Trash2 size={16} />
+                    <span>Remove</span>
+                  </button>
+                </div>
+              </div>
+              
+              <p className="text-gray-700 mb-4 font-medium">{post.content}</p>
+              
+              {post.status === 'done' && (
+                <div className="inline-block bg-green-100 text-green-800 text-xs px-3 py-1.5 rounded-full mb-4 font-medium">
+                  ✓ Resolved
+                </div>
+              )}
+
+              {post.comments.length > 0 && (
+                <div className="mt-6 space-y-3 bg-[#7a8c7e20] backdrop-blur-sm p-5 rounded-2xl">
+                  <h4 className="font-medium text-sm flex items-center space-x-2 text-[#7a8c7e]">
+                    <MessageCircle size={16} />
+                    <span>Comments ({post.comments.length})</span>
+                  </h4>
+                  {post.comments.map((comment) => (
+                    <div key={comment.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-3 shadow-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#7a8c7e' }}>
+                      <p className="text-sm text-gray-800 font-medium mb-2">{comment.text}</p>
+                      <p className="text-xs text-[#b8a696] font-medium">
+                        {comment.author} • {format(new Date(comment.date), 'MMM d, yyyy')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {commentingOn === post.id ? (
+                <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                  <input
+                    type="text"
+                    value={commentText}
+                    onChange={(e) => setCommentText(e.target.value)}
+                    placeholder="Write a comment..."
+                    className="flex-1 bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        addComment(post.id)
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => addComment(post.id)}
+                    className="bg-[#7a8c7e] text-white px-6 py-3 rounded-2xl hover:bg-[#6d7a6e] text-sm font-medium transition-all duration-200 shadow-md"
+                  >
+                    Post
+                  </button>
+                  <button
+                    onClick={() => {
+                      setCommentingOn(null)
+                      setCommentText('')
+                    }}
+                    className="bg-[#7a8c7e20] text-[#7a8c7e] px-6 py-3 rounded-2xl hover:bg-[#7a8c7e30] text-sm font-medium transition-all duration-200"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setCommentingOn(post.id)}
+                  className="mt-4 text-[#7a8c7e] hover:text-[#6d7a6e] text-sm flex items-center space-x-2 font-medium transition-colors"
+                >
+                  <MessageCircle size={16} />
+                  <span>Add comment</span>
+                </button>
+              )}
+            </div>
+          ))
+        )}
       </div>
 
       {showPostForm && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-md w-full shadow-2xl">
+          <div className="bg-[#fafaf8] rounded-3xl p-8 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-medium text-gray-800 tracking-tight">New Post</h3>
               <button
                 onClick={() => {
                   setShowPostForm(false)
                   setFormData({ author: 'Kate', title: '', content: '' })
+                  setErrorMessage('')
                 }}
                 className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
               >
                 <X size={24} className="text-gray-600" />
               </button>
             </div>
+            
+            {errorMessage && (
+              <div className="mb-4 bg-red-50 border border-red-200 rounded-2xl p-4">
+                <p className="text-sm text-red-800">{errorMessage}</p>
+                <p className="text-xs text-red-600 mt-2">Check your Supabase connection and RLS policies.</p>
+              </div>
+            )}
+            
             <form onSubmit={handleSubmit} className="space-y-5">
               <div>
                 <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Your Name</label>
@@ -279,7 +305,9 @@ export default function CabinBoard() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Title</label>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Title <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="text"
                   value={formData.title}

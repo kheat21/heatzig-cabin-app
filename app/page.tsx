@@ -53,49 +53,51 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
-        {/* Sticky Tab Navigation */}
-        <div className="sticky top-4 z-40 flex justify-center mb-8 animate-fade-in overflow-x-auto">
-          <div className="glass rounded-3xl p-2 shadow-2xl inline-flex gap-2 border border-white/20">
-            <button
-              onClick={() => setActiveTab('calendar')}
-              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
-                activeTab === 'calendar'
-                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
-                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
-              }`}
-            >
-              📅 Calendar
-            </button>
-            <button
-              onClick={() => setActiveTab('board')}
-              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
-                activeTab === 'board'
-                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
-                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
-              }`}
-            >
-              💬 Message Board
-            </button>
-            <button
-              onClick={() => setActiveTab('weather')}
-              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
-                activeTab === 'weather'
-                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
-                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
-              }`}
-            >
-              ☀️ Weather
-            </button>
-            <button
-              onClick={() => setActiveTab('concierge')}
-              className={`px-4 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
-                activeTab === 'concierge'
-                  ? 'gold-gradient text-gray-800 shadow-lg scale-105'
-                  : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
-              }`}
-            >
-              ✨ Concierge
-            </button>
+        {/* Sticky Tab Navigation - Now Wraps on Mobile */}
+        <div className="sticky top-4 z-40 flex justify-center mb-8 animate-fade-in">
+          <div className="glass rounded-3xl p-2 shadow-2xl border border-white/20 max-w-full">
+            <div className="flex flex-wrap justify-center gap-2">
+              <button
+                onClick={() => setActiveTab('calendar')}
+                className={`px-4 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'calendar'
+                    ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                    : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+                }`}
+              >
+                📅 Calendar
+              </button>
+              <button
+                onClick={() => setActiveTab('board')}
+                className={`px-4 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'board'
+                    ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                    : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+                }`}
+              >
+                💬 Message Board
+              </button>
+              <button
+                onClick={() => setActiveTab('weather')}
+                className={`px-4 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'weather'
+                    ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                    : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+                }`}
+              >
+                ☀️ Weather
+              </button>
+              <button
+                onClick={() => setActiveTab('concierge')}
+                className={`px-4 sm:px-6 md:px-8 py-3 md:py-4 rounded-2xl font-medium transition-all duration-300 text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'concierge'
+                    ? 'gold-gradient text-gray-800 shadow-lg scale-105'
+                    : 'text-gray-700 hover:text-[#7a8c7e] hover:bg-white/50'
+                }`}
+              >
+                ✨ Concierge
+              </button>
+            </div>
           </div>
         </div>
 

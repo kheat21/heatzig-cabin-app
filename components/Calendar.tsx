@@ -66,6 +66,7 @@ export default function Calendar() {
   const [showTripForm, setShowTripForm] = useState(false)
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null)
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null)
+  const [errorMessage, setErrorMessage] = useState('')
   const [formData, setFormData] = useState({
     tripName: '',
     familyMembers: [] as string[],
@@ -158,6 +159,18 @@ export default function Calendar() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setErrorMessage('')
+    
+    // Validate dates
+    if (formData.startDate && formData.endDate) {
+      const start = new Date(formData.startDate)
+      const end = new Date(formData.endDate)
+      if (end < start) {
+        setErrorMessage('Departure date must be after arrival date')
+        return
+      }
+    }
+    
     const primaryMember = formData.familyMembers[0] || formData.createdBy
     
     if (editingTrip) {
@@ -176,9 +189,19 @@ export default function Calendar() {
         .eq('id', editingTrip.id)
       if (error) {
         console.error('Error updating trip:', error)
-        alert('Failed to update trip')
+        setErrorMessage(`Error: ${error.message}`)
       } else {
         setEditingTrip(null)
+        setShowTripForm(false)
+        setFormData({
+          tripName: '',
+          familyMembers: [],
+          startDate: '',
+          endDate: '',
+          guestCount: 1,
+          createdBy: '',
+          notes: '',
+        })
       }
     } else {
       const { error } = await supabase
@@ -195,20 +218,20 @@ export default function Calendar() {
         }])
       if (error) {
         console.error('Error creating trip:', error)
-        alert('Failed to create trip')
+        setErrorMessage(`Error: ${error.message}`)
+      } else {
+        setShowTripForm(false)
+        setFormData({
+          tripName: '',
+          familyMembers: [],
+          startDate: '',
+          endDate: '',
+          guestCount: 1,
+          createdBy: '',
+          notes: '',
+        })
       }
     }
-    
-    setShowTripForm(false)
-    setFormData({
-      tripName: '',
-      familyMembers: [],
-      startDate: '',
-      endDate: '',
-      guestCount: 1,
-      createdBy: '',
-      notes: '',
-    })
   }
 
   const handleEdit = (trip: Trip) => {
@@ -600,6 +623,7 @@ export default function Calendar() {
                 onClick={() => {
                   setShowTripForm(false)
                   setEditingTrip(null)
+                  setErrorMessage('')
                   setFormData({
                     tripName: '',
                     familyMembers: [],
@@ -615,6 +639,12 @@ export default function Calendar() {
                 <X size={24} />
               </button>
             </div>
+
+            {errorMessage && (
+              <div className="mb-6 bg-red-50 border border-red-200 rounded-2xl p-4">
+                <p className="text-sm text-red-800 font-medium">{errorMessage}</p>
+              </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
@@ -632,7 +662,9 @@ export default function Calendar() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Arrival</label>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                    Arrival <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
                     value={formData.startDate}
@@ -642,7 +674,9 @@ export default function Calendar() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Departure</label>
+                  <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                    Departure <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="date"
                     value={formData.endDate}
@@ -672,7 +706,12 @@ export default function Calendar() {
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-[#b8a696] mt-3 font-medium">Tap names to add them to this trip</p>
+                {formData.familyMembers.length === 0 && (
+                  <p className="text-xs text-[#b8a696] mt-3 font-medium">Tap names to add them to this trip</p>
+                )}
+                {formData.familyMembers.length > 0 && (
+                  <p className="text-xs text-green-600 mt-3 font-medium">✓ {formData.familyMembers.length} {formData.familyMembers.length === 1 ? 'person' : 'people'} selected</p>
+                )}
               </div>
 
               <div>
@@ -690,7 +729,9 @@ export default function Calendar() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">Created By</label>
+                <label className="block text-sm font-medium text-[#b8a696] mb-2 tracking-wide uppercase">
+                  Created By <span className="text-red-500">*</span>
+                </label>
                 <select
                   value={formData.createdBy}
                   onChange={(e) => setFormData({ ...formData, createdBy: e.target.value })}
@@ -723,6 +764,7 @@ export default function Calendar() {
                   onClick={() => {
                     setShowTripForm(false)
                     setEditingTrip(null)
+                    setErrorMessage('')
                     setFormData({
                       tripName: '',
                       familyMembers: [],
