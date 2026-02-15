@@ -12,7 +12,7 @@ export default function Concierge() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Good day! I'm delighted to assist you during your stay at Promontory Club. As your personal concierge, I'm here to ensure your experience in this exclusive mountain enclave is nothing short of extraordinary.\n\nWhether you seek recommendations for fine dining, outdoor pursuits, or local insights about Promontory and the greater Park City area, I'm at your service. How may I assist you today?"
+      content: "Hi! As your personal concierge, I'm here to make your experience seamless and memorable.\n\nWhether you seek recommendations for fine dining, outdoor activities, or local events near Promontory and the greater Park City area, I'm at your service. How may I assist you today?"
     }
   ])
   const [input, setInput] = useState('')
