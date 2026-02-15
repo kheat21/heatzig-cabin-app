@@ -55,7 +55,14 @@ export default function CabinBoard() {
     if (error) {
       console.error('Error loading posts:', error)
     } else if (data) {
-      setPosts(data)
+      // Sort: Open posts first (newest first), then resolved posts (newest first)
+      const sortedPosts = data.sort((a, b) => {
+        if (a.status === 'open' && b.status === 'done') return -1
+        if (a.status === 'done' && b.status === 'open') return 1
+        // Same status - sort by created_at descending (newest first)
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      })
+      setPosts(sortedPosts)
     }
   }
 
@@ -72,7 +79,6 @@ export default function CabinBoard() {
         status: 'open',
         comments: [],
       }])
-    
     if (error) {
       console.error('Error creating post:', error)
       setErrorMessage(`Error: ${error.message}`)
@@ -129,6 +135,9 @@ export default function CabinBoard() {
     }
   }
 
+  const openPosts = posts.filter(p => p.status === 'open')
+  const resolvedPosts = posts.filter(p => p.status === 'done')
+
   return (
     <div className="backdrop-blur-sm bg-white/60 rounded-2xl shadow-xl p-8">
       <div className="flex justify-between items-center mb-8">
@@ -143,7 +152,171 @@ export default function CabinBoard() {
       </div>
 
       <div className="space-y-6">
-        {posts.length === 0 ? (
+        {/* Open Posts Section */}
+        {openPosts.length > 0 && (
+          <>
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="h-1 w-1 rounded-full bg-[#7a8c7e]"></div>
+              <h3 className="text-sm font-medium text-[#7a8c7e] uppercase tracking-wide">Open ({openPosts.length})</h3>
+            </div>
+            {openPosts.map((post) => (
+              <div
+                key={post.id}
+                className="backdrop-blur-sm rounded-2xl p-6 transition-all duration-200 shadow-md hover:shadow-lg bg-white/60"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-xl text-gray-800 mb-2 tracking-tight">{post.title}</h3>
+                    <p className="text-sm text-[#b8a696] font-medium">
+                      by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => toggleStatus(post.id, post.status)}
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md bg-[#7a8c7e20] text-[#7a8c7e] hover:bg-[#7a8c7e30]"
+                    >
+                      <Check size={16} />
+                      <span>Resolved</span>
+                    </button>
+                    <button
+                      onClick={() => deletePost(post.id)}
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                    >
+                      <Trash2 size={16} />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <p className="text-gray-700 mb-4 font-medium">{post.content}</p>
+
+                {post.comments.length > 0 && (
+                  <div className="mt-6 space-y-3 bg-[#7a8c7e20] backdrop-blur-sm p-5 rounded-2xl">
+                    <h4 className="font-medium text-sm flex items-center space-x-2 text-[#7a8c7e]">
+                      <MessageCircle size={16} />
+                      <span>Comments ({post.comments.length})</span>
+                    </h4>
+                    {post.comments.map((comment) => (
+                      <div key={comment.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-3 shadow-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#7a8c7e' }}>
+                        <p className="text-sm text-gray-800 font-medium mb-2">{comment.text}</p>
+                        <p className="text-xs text-[#b8a696] font-medium">
+                          {comment.author} • {format(new Date(comment.date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {commentingOn === post.id ? (
+                  <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                    <input
+                      type="text"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="flex-1 bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          addComment(post.id)
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => addComment(post.id)}
+                      className="bg-[#7a8c7e] text-white px-6 py-3 rounded-2xl hover:bg-[#6d7a6e] text-sm font-medium transition-all duration-200 shadow-md"
+                    >
+                      Post
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCommentingOn(null)
+                        setCommentText('')
+                      }}
+                      className="bg-[#7a8c7e20] text-[#7a8c7e] px-6 py-3 rounded-2xl hover:bg-[#7a8c7e30] text-sm font-medium transition-all duration-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setCommentingOn(post.id)}
+                    className="mt-4 text-[#7a8c7e] hover:text-[#6d7a6e] text-sm flex items-center space-x-2 font-medium transition-colors"
+                  >
+                    <MessageCircle size={16} />
+                    <span>Add comment</span>
+                  </button>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {/* Resolved Posts Section */}
+        {resolvedPosts.length > 0 && (
+          <>
+            <div className="flex items-center space-x-3 mb-4 mt-12">
+              <div className="h-1 w-1 rounded-full bg-green-600"></div>
+              <h3 className="text-sm font-medium text-green-600 uppercase tracking-wide">Resolved ({resolvedPosts.length})</h3>
+            </div>
+            {resolvedPosts.map((post) => (
+              <div
+                key={post.id}
+                className="backdrop-blur-sm rounded-2xl p-6 transition-all duration-200 shadow-md hover:shadow-lg bg-gray-100/60 opacity-75"
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-xl text-gray-600 mb-2 tracking-tight line-through">{post.title}</h3>
+                    <p className="text-sm text-gray-500 font-medium">
+                      by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
+                    </p>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => toggleStatus(post.id, post.status)}
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md bg-green-100 text-green-700 hover:bg-green-200"
+                    >
+                      <RotateCcw size={16} />
+                      <span>Reopen</span>
+                    </button>
+                    <button
+                      onClick={() => deletePost(post.id)}
+                      className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
+                    >
+                      <Trash2 size={16} />
+                      <span>Remove</span>
+                    </button>
+                  </div>
+                </div>
+                
+                <p className="text-gray-600 mb-4 font-medium">{post.content}</p>
+                
+                <div className="inline-block bg-green-100 text-green-800 text-xs px-3 py-1.5 rounded-full mb-4 font-medium">
+                  ✓ Resolved
+                </div>
+
+                {post.comments.length > 0 && (
+                  <div className="mt-6 space-y-3 bg-gray-200/60 backdrop-blur-sm p-5 rounded-2xl">
+                    <h4 className="font-medium text-sm flex items-center space-x-2 text-gray-600">
+                      <MessageCircle size={16} />
+                      <span>Comments ({post.comments.length})</span>
+                    </h4>
+                    {post.comments.map((comment) => (
+                      <div key={comment.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-3 shadow-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#9ca3af' }}>
+                        <p className="text-sm text-gray-700 font-medium mb-2">{comment.text}</p>
+                        <p className="text-xs text-gray-500 font-medium">
+                          {comment.author} • {format(new Date(comment.date), 'MMM d, yyyy')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
+
+        {posts.length === 0 && (
           <div className="text-center py-12 text-gray-500">
             <MessageCircle size={48} className="mx-auto mb-4 text-[#b8a696]" />
             <p className="text-sm font-medium">No messages yet</p>
@@ -154,118 +327,6 @@ export default function CabinBoard() {
               Create the first post
             </button>
           </div>
-        ) : (
-          posts.map((post) => (
-            <div
-              key={post.id}
-              className={`backdrop-blur-sm rounded-2xl p-6 transition-all duration-200 shadow-md hover:shadow-lg ${
-                post.status === 'done' ? 'opacity-60 bg-white/40' : 'bg-white/60'
-              }`}
-            >
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex-1">
-                  <h3 className="font-medium text-xl text-gray-800 mb-2 tracking-tight">{post.title}</h3>
-                  <p className="text-sm text-[#b8a696] font-medium">
-                    by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
-                  </p>
-                </div>
-                <div className="flex space-x-3">
-                  <button
-                    onClick={() => toggleStatus(post.id, post.status)}
-                    className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md ${
-                      post.status === 'done'
-                        ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                        : 'bg-[#7a8c7e20] text-[#7a8c7e] hover:bg-[#7a8c7e30]'
-                    }`}
-                  >
-                    {post.status === 'done' ? (
-                      <>
-                        <RotateCcw size={16} />
-                        <span>Reopen</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={16} />
-                        <span>Resolved</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => deletePost(post.id)}
-                    className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-red-100 text-red-700 hover:bg-red-200 transition-all duration-200 text-sm font-medium shadow-sm hover:shadow-md"
-                  >
-                    <Trash2 size={16} />
-                    <span>Remove</span>
-                  </button>
-                </div>
-              </div>
-              
-              <p className="text-gray-700 mb-4 font-medium">{post.content}</p>
-              
-              {post.status === 'done' && (
-                <div className="inline-block bg-green-100 text-green-800 text-xs px-3 py-1.5 rounded-full mb-4 font-medium">
-                  ✓ Resolved
-                </div>
-              )}
-
-              {post.comments.length > 0 && (
-                <div className="mt-6 space-y-3 bg-[#7a8c7e20] backdrop-blur-sm p-5 rounded-2xl">
-                  <h4 className="font-medium text-sm flex items-center space-x-2 text-[#7a8c7e]">
-                    <MessageCircle size={16} />
-                    <span>Comments ({post.comments.length})</span>
-                  </h4>
-                  {post.comments.map((comment) => (
-                    <div key={comment.id} className="bg-white/80 backdrop-blur-sm p-4 rounded-xl border-l-3 shadow-sm" style={{ borderLeftWidth: '3px', borderLeftColor: '#7a8c7e' }}>
-                      <p className="text-sm text-gray-800 font-medium mb-2">{comment.text}</p>
-                      <p className="text-xs text-[#b8a696] font-medium">
-                        {comment.author} • {format(new Date(comment.date), 'MMM d, yyyy')}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {commentingOn === post.id ? (
-                <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                  <input
-                    type="text"
-                    value={commentText}
-                    onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="flex-1 bg-white/60 backdrop-blur-sm border-2 border-[#7a8c7e20] rounded-2xl px-5 py-3 text-sm focus:outline-none focus:border-[#7a8c7e] transition-all duration-200 font-medium"
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        addComment(post.id)
-                      }
-                    }}
-                  />
-                  <button
-                    onClick={() => addComment(post.id)}
-                    className="bg-[#7a8c7e] text-white px-6 py-3 rounded-2xl hover:bg-[#6d7a6e] text-sm font-medium transition-all duration-200 shadow-md"
-                  >
-                    Post
-                  </button>
-                  <button
-                    onClick={() => {
-                      setCommentingOn(null)
-                      setCommentText('')
-                    }}
-                    className="bg-[#7a8c7e20] text-[#7a8c7e] px-6 py-3 rounded-2xl hover:bg-[#7a8c7e30] text-sm font-medium transition-all duration-200"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setCommentingOn(post.id)}
-                  className="mt-4 text-[#7a8c7e] hover:text-[#6d7a6e] text-sm flex items-center space-x-2 font-medium transition-colors"
-                >
-                  <MessageCircle size={16} />
-                  <span>Add comment</span>
-                </button>
-              )}
-            </div>
-          ))
         )}
       </div>
 
