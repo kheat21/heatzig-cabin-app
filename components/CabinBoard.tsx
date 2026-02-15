@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, MessageCircle, Check, RotateCcw, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
-import { saveToStorage, loadFromStorage } from '@/lib/storage'
+import { supabase } from '@/lib/supabase'
 
 interface Comment {
   id: string
@@ -15,40 +15,12 @@ interface Comment {
 interface Post {
   id: string
   author: string
-  date: string
   title: string
   content: string
   status: 'open' | 'done'
   comments: Comment[]
+  created_at: string
 }
-
-const DEFAULT_POSTS = [
-  {
-    id: '1',
-    author: 'Mark',
-    date: '2026-02-10',
-    title: 'Low Propane',
-    content: 'Propane tank is getting low. Need to schedule a refill soon.',
-    status: 'open' as const,
-    comments: [
-      {
-        id: 'c1',
-        author: 'Kate',
-        text: 'I can call the propane company tomorrow.',
-        date: '2026-02-11',
-      },
-    ],
-  },
-  {
-    id: '2',
-    author: 'Mimi',
-    date: '2026-02-12',
-    title: 'Groceries Needed',
-    content: 'Please pick up: coffee, sugar, toilet paper, and paper towels.',
-    status: 'done' as const,
-    comments: [],
-  },
-]
 
 export default function CabinBoard() {
   const [posts, setPosts] = useState<Post[]>([])
@@ -60,49 +32,79 @@ export default function CabinBoard() {
   })
   const [commentText, setCommentText] = useState('')
   const [commentingOn, setCommentingOn] = useState<string | null>(null)
-  const [mounted, setMounted] = useState(false)
 
-  // Load posts on mount
+  // Load posts from Supabase
   useEffect(() => {
-    setMounted(true)
-    const loadedPosts = loadFromStorage('cabin_posts', DEFAULT_POSTS)
-    setPosts(loadedPosts)
+    loadPosts()
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('posts_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, () => {
+        loadPosts()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
-  // Save posts whenever they change (but only after initial mount)
-  useEffect(() => {
-    if (mounted && posts.length >= 0) {
-      saveToStorage('cabin_posts', posts)
-    }
-  }, [posts, mounted])
+  const loadPosts = async () => {
+    const { data, error } = await supabase
+      .from('posts')
+      .select('*')
+      .order('created_at', { ascending: false })
 
-  const handleSubmit = (e: React.FormEvent) => {
+    if (error) {
+      console.error('Error loading posts:', error)
+    } else if (data) {
+      setPosts(data)
+    }
+  }
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    const newPost: Post = {
-      id: Date.now().toString(),
-      ...formData,
-      date: new Date().toISOString().split('T')[0],
-      status: 'open',
-      comments: [],
+    
+    const { error } = await supabase
+      .from('posts')
+      .insert([{
+        author: formData.author,
+        title: formData.title,
+        content: formData.content,
+        status: 'open',
+        comments: [],
+      }])
+
+    if (error) {
+      console.error('Error creating post:', error)
+      alert('Failed to create post')
+    } else {
+      setShowPostForm(false)
+      setFormData({ author: 'Mark', title: '', content: '' })
     }
-    const updatedPosts = [newPost, ...posts]
-    setPosts(updatedPosts)
-    console.log('✅ Post added:', newPost)
-    setShowPostForm(false)
-    setFormData({ author: 'Mark', title: '', content: '' })
   }
 
-  const toggleStatus = (id: string) => {
-    setPosts(posts.map((post) => 
-      post.id === id 
-        ? { ...post, status: post.status === 'open' ? 'done' : 'open' }
-        : post
-    ))
+  const toggleStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'open' ? 'done' : 'open'
+    
+    const { error } = await supabase
+      .from('posts')
+      .update({ status: newStatus })
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error updating status:', error)
+      alert('Failed to update status')
+    }
   }
 
-  const addComment = (postId: string) => {
+  const addComment = async (postId: string) => {
     if (!commentText.trim()) return
     
+    const post = posts.find(p => p.id === postId)
+    if (!post) return
+
     const newComment: Comment = {
       id: Date.now().toString(),
       author: formData.author,
@@ -110,18 +112,32 @@ export default function CabinBoard() {
       date: new Date().toISOString().split('T')[0],
     }
     
-    setPosts(posts.map((post) => 
-      post.id === postId 
-        ? { ...post, comments: [...post.comments, newComment] }
-        : post
-    ))
+    const updatedComments = [...post.comments, newComment]
     
-    setCommentText('')
-    setCommentingOn(null)
+    const { error } = await supabase
+      .from('posts')
+      .update({ comments: updatedComments })
+      .eq('id', postId)
+
+    if (error) {
+      console.error('Error adding comment:', error)
+      alert('Failed to add comment')
+    } else {
+      setCommentText('')
+      setCommentingOn(null)
+    }
   }
 
-  const deletePost = (id: string) => {
-    setPosts(posts.filter((post) => post.id !== id))
+  const deletePost = async (id: string) => {
+    const { error } = await supabase
+      .from('posts')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      console.error('Error deleting post:', error)
+      alert('Failed to delete post')
+    }
   }
 
   return (
@@ -149,12 +165,12 @@ export default function CabinBoard() {
               <div className="flex-1">
                 <h3 className="font-bold text-lg">{post.title}</h3>
                 <p className="text-sm text-gray-600">
-                  by {post.author} on {format(new Date(post.date), 'MMM d, yyyy')}
+                  by {post.author} on {format(new Date(post.created_at), 'MMM d, yyyy')}
                 </p>
               </div>
               <div className="flex space-x-2">
                 <button
-                  onClick={() => toggleStatus(post.id)}
+                  onClick={() => toggleStatus(post.id, post.status)}
                   className={`flex items-center space-x-1 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
                     post.status === 'done'
                       ? 'bg-green-100 text-green-700 hover:bg-green-200'

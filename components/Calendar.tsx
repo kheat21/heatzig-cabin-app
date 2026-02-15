@@ -2,17 +2,17 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, X, User, Calendar as CalendarIcon, Users, StickyNote, Edit, Trash2 } from 'lucide-react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, parseISO, isAfter, startOfToday, differenceInDays, isBefore, getDay } from 'date-fns'
-import { saveToStorage, loadFromStorage } from '@/lib/storage'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, isWithinInterval, parseISO, isAfter, startOfToday, isBefore } from 'date-fns'
+import { supabase } from '@/lib/supabase'
 
 interface Trip {
   id: string
-  tripName: string
-  familyMembers: string[]
-  startDate: string
-  endDate: string
-  guestCount: number
-  createdBy: string
+  trip_name: string
+  family_members: string[]
+  start_date: string
+  end_date: string
+  guest_count: number
+  created_by: string
   notes: string
   color: string
 }
@@ -32,7 +32,6 @@ const FAMILY_MEMBERS = [
 ]
 
 const HOLIDAYS = [
-  // 2026 Holidays
   { date: '2026-01-01', name: "New Year's Day" },
   { date: '2026-01-19', name: 'MLK Day' },
   { date: '2026-02-16', name: 'Presidents Day' },
@@ -41,7 +40,6 @@ const HOLIDAYS = [
   { date: '2026-09-07', name: 'Labor Day' },
   { date: '2026-11-26', name: 'Thanksgiving' },
   { date: '2026-12-25', name: 'Christmas' },
-  // 2027 Holidays
   { date: '2027-01-01', name: "New Year's Day" },
   { date: '2027-01-18', name: 'MLK Day' },
   { date: '2027-02-15', name: 'Presidents Day' },
@@ -50,31 +48,6 @@ const HOLIDAYS = [
   { date: '2027-09-06', name: 'Labor Day' },
   { date: '2027-11-25', name: 'Thanksgiving' },
   { date: '2027-12-25', name: 'Christmas' },
-]
-
-const DEFAULT_TRIPS = [
-  {
-    id: '1',
-    tripName: "Kate's Girls Trip",
-    familyMembers: ['Kate', 'Megan', 'Lindsay'],
-    startDate: '2026-02-17',
-    endDate: '2026-02-25',
-    guestCount: 10,
-    createdBy: 'Kate',
-    notes: '',
-    color: '#EC4899',
-  },
-  {
-    id: '2',
-    tripName: 'Bonnie & Sexy 7',
-    familyMembers: ['Bonnie'],
-    startDate: '2026-05-17',
-    endDate: '2026-05-28',
-    guestCount: 7,
-    createdBy: 'Bonnie',
-    notes: '',
-    color: '#F59E0B',
-  },
 ]
 
 type ViewMode = '1month' | '2month' | '4month'
@@ -102,21 +75,36 @@ export default function Calendar() {
     createdBy: '',
     notes: '',
   })
-  const [mounted, setMounted] = useState(false)
 
-  // Load trips on mount
+  // Load trips from Supabase
   useEffect(() => {
-    setMounted(true)
-    const loadedTrips = loadFromStorage('cabin_trips', DEFAULT_TRIPS)
-    setTrips(loadedTrips)
+    loadTrips()
+
+    // Subscribe to realtime changes
+    const channel = supabase
+      .channel('trips_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'trips' }, () => {
+        loadTrips()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
-  // Save trips whenever they change (but only after initial mount)
-  useEffect(() => {
-    if (mounted && trips.length >= 0) {
-      saveToStorage('cabin_trips', trips)
+  const loadTrips = async () => {
+    const { data, error } = await supabase
+      .from('trips')
+      .select('*')
+      .order('start_date', { ascending: true })
+
+    if (error) {
+      console.error('Error loading trips:', error)
+    } else if (data) {
+      setTrips(data)
     }
-  }, [trips, mounted])
+  }
 
   const getMonthsToShow = () => {
     switch (viewMode) {
@@ -128,19 +116,17 @@ export default function Calendar() {
   }
 
   const nextPeriod = () => {
-    const monthsToAdd = getMonthsToShow()
-    setCurrentDate(addMonths(currentDate, monthsToAdd))
+    setCurrentDate(addMonths(currentDate, getMonthsToShow()))
   }
 
   const prevPeriod = () => {
-    const monthsToAdd = getMonthsToShow()
-    setCurrentDate(subMonths(currentDate, monthsToAdd))
+    setCurrentDate(subMonths(currentDate, getMonthsToShow()))
   }
 
   const getTripsForDay = (day: Date) => {
     return trips.filter((trip) => {
-      const start = parseISO(trip.startDate)
-      const end = parseISO(trip.endDate)
+      const start = parseISO(trip.start_date)
+      const end = parseISO(trip.end_date)
       return isWithinInterval(day, { start, end })
     })
   }
@@ -148,8 +134,8 @@ export default function Calendar() {
   const getUpcomingTrips = () => {
     const today = startOfToday()
     return trips
-      .filter(trip => isAfter(parseISO(trip.endDate), today) || isSameDay(parseISO(trip.endDate), today))
-      .sort((a, b) => parseISO(a.startDate).getTime() - parseISO(b.startDate).getTime())
+      .filter(trip => isAfter(parseISO(trip.end_date), today) || isSameDay(parseISO(trip.end_date), today))
+      .sort((a, b) => parseISO(a.start_date).getTime() - parseISO(b.start_date).getTime())
   }
 
   const getHolidayForDay = (day: Date) => {
@@ -175,27 +161,51 @@ export default function Calendar() {
     return FAMILY_MEMBERS.find(m => m.name === name)?.color || '#6B7280'
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const primaryMember = formData.familyMembers[0] || formData.createdBy
     
     if (editingTrip) {
       // Update existing trip
-      const updatedTrip: Trip = {
-        ...editingTrip,
-        ...formData,
-        color: getMemberColor(primaryMember),
+      const { error } = await supabase
+        .from('trips')
+        .update({
+          trip_name: formData.tripName,
+          family_members: formData.familyMembers,
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          guest_count: formData.guestCount,
+          created_by: formData.createdBy,
+          notes: formData.notes,
+          color: getMemberColor(primaryMember),
+        })
+        .eq('id', editingTrip.id)
+
+      if (error) {
+        console.error('Error updating trip:', error)
+        alert('Failed to update trip')
+      } else {
+        setEditingTrip(null)
       }
-      setTrips(trips.map(t => t.id === editingTrip.id ? updatedTrip : t))
-      setEditingTrip(null)
     } else {
       // Create new trip
-      const newTrip: Trip = {
-        id: Date.now().toString(),
-        ...formData,
-        color: getMemberColor(primaryMember),
+      const { error } = await supabase
+        .from('trips')
+        .insert([{
+          trip_name: formData.tripName,
+          family_members: formData.familyMembers,
+          start_date: formData.startDate,
+          end_date: formData.endDate,
+          guest_count: formData.guestCount,
+          created_by: formData.createdBy,
+          notes: formData.notes,
+          color: getMemberColor(primaryMember),
+        }])
+
+      if (error) {
+        console.error('Error creating trip:', error)
+        alert('Failed to create trip')
       }
-      setTrips([...trips, newTrip])
     }
     
     setShowTripForm(false)
@@ -213,22 +223,31 @@ export default function Calendar() {
   const handleEdit = (trip: Trip) => {
     setEditingTrip(trip)
     setFormData({
-      tripName: trip.tripName,
-      familyMembers: trip.familyMembers,
-      startDate: trip.startDate,
-      endDate: trip.endDate,
-      guestCount: trip.guestCount,
-      createdBy: trip.createdBy,
+      tripName: trip.trip_name,
+      familyMembers: trip.family_members,
+      startDate: trip.start_date,
+      endDate: trip.end_date,
+      guestCount: trip.guest_count,
+      createdBy: trip.created_by,
       notes: trip.notes,
     })
     setSelectedTrip(null)
     setShowTripForm(true)
   }
 
-  const handleDelete = (tripId: string) => {
+  const handleDelete = async (tripId: string) => {
     if (confirm('Are you sure you want to delete this trip?')) {
-      setTrips(trips.filter(t => t.id !== tripId))
-      setSelectedTrip(null)
+      const { error } = await supabase
+        .from('trips')
+        .delete()
+        .eq('id', tripId)
+
+      if (error) {
+        console.error('Error deleting trip:', error)
+        alert('Failed to delete trip')
+      } else {
+        setSelectedTrip(null)
+      }
     }
   }
 
@@ -247,8 +266,8 @@ export default function Calendar() {
       const weekTrips: PositionedTrip[] = []
       
       trips.forEach(trip => {
-        const tripStart = parseISO(trip.startDate)
-        const tripEnd = parseISO(trip.endDate)
+        const tripStart = parseISO(trip.start_date)
+        const tripEnd = parseISO(trip.end_date)
         
         const weekStartDate = weekDays[0]
         const weekEndDate = weekDays[6]
@@ -303,7 +322,6 @@ export default function Calendar() {
         <h3 className="text-xl font-bold text-center mb-4">{format(monthDate, 'MMMM yyyy')}</h3>
         
         <div className="relative">
-          {/* Day headers */}
           <div className="grid grid-cols-7 gap-2 mb-2">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
               <div key={day} className="text-center font-semibold text-gray-600 py-2 text-xs">
@@ -312,13 +330,11 @@ export default function Calendar() {
             ))}
           </div>
           
-          {/* Calendar grid */}
           <div className="grid grid-cols-7 gap-2">
             {calendarDays.map((day, idx) => {
               const holiday = getHolidayForDay(day)
               const isCurrentMonth = isSameMonth(day, monthDate)
               const isToday = isSameDay(day, new Date())
-              const weekIndex = Math.floor(idx / 7)
 
               return (
                 <div
@@ -327,7 +343,6 @@ export default function Calendar() {
                   className={`min-h-24 p-2 border rounded-lg transition-all cursor-pointer relative ${
                     isCurrentMonth ? 'bg-white border-gray-200' : 'bg-gray-100 border-gray-100'
                   } ${isToday ? 'ring-2 ring-blue-500' : ''} hover:shadow-md`}
-                  style={{ gridColumn: (idx % 7) + 1, gridRow: Math.floor(idx / 7) + 1 }}
                 >
                   <div className={`text-sm font-semibold mb-1 ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>
                     {format(day, 'd')}
@@ -342,7 +357,6 @@ export default function Calendar() {
             })}
           </div>
           
-          {/* Overlaid trip bars */}
           <div className="absolute top-12 left-0 right-0 pointer-events-none" style={{ zIndex: 10 }}>
             {tripPositions.map((weekTrips, weekIdx) => (
               <div key={weekIdx} className="relative" style={{ height: '6.5rem', marginBottom: '0.5rem' }}>
@@ -371,7 +385,7 @@ export default function Calendar() {
                       }}
                       onClick={() => setSelectedTrip(posTrip.trip)}
                     >
-                      {posTrip.trip.tripName || posTrip.trip.familyMembers.join(', ')}
+                      {posTrip.trip.trip_name || posTrip.trip.family_members.join(', ')}
                     </div>
                   )
                 })}
@@ -388,7 +402,6 @@ export default function Calendar() {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-      {/* Main Calendar Section */}
       <div className="lg:col-span-3 bg-white rounded-xl shadow-lg p-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
           <div className="flex items-center space-x-4">
@@ -454,7 +467,6 @@ export default function Calendar() {
         </div>
       </div>
 
-      {/* Upcoming Trips Sidebar */}
       <div className="lg:col-span-1">
         <div className="bg-white rounded-xl shadow-lg p-6 sticky top-6">
           <h3 className="text-xl font-bold text-gray-800 mb-4">Upcoming Trips:</h3>
@@ -469,16 +481,16 @@ export default function Calendar() {
                   onClick={() => setSelectedTrip(trip)}
                 >
                   <div className="text-sm font-semibold text-gray-600 mb-1">
-                    {format(parseISO(trip.startDate), 'MMM d')} - {format(parseISO(trip.endDate), 'MMM d')}
+                    {format(parseISO(trip.start_date), 'MMM d')} - {format(parseISO(trip.end_date), 'MMM d')}
                   </div>
                   <div className="font-bold text-gray-800 mb-2">
-                    {trip.tripName || 'Cabin Trip'}
+                    {trip.trip_name || 'Cabin Trip'}
                   </div>
                   <div className="text-sm text-gray-600 mb-2">
-                    {trip.familyMembers.join(', ')}
+                    {trip.family_members.join(', ')}
                   </div>
                   <div className="text-xs text-gray-500">
-                    Total Guests: {trip.guestCount}
+                    Total Guests: {trip.guest_count}
                   </div>
                 </div>
               ))}
@@ -512,10 +524,10 @@ export default function Calendar() {
             </div>
 
             <div className="space-y-4">
-              {selectedTrip.tripName && (
+              {selectedTrip.trip_name && (
                 <div>
                   <h4 className="text-lg font-bold" style={{ color: selectedTrip.color }}>
-                    {selectedTrip.tripName}
+                    {selectedTrip.trip_name}
                   </h4>
                 </div>
               )}
@@ -524,7 +536,7 @@ export default function Calendar() {
                 <CalendarIcon size={20} className="text-gray-500" />
                 <div>
                   <p className="font-semibold">Dates</p>
-                  <p>{format(parseISO(selectedTrip.startDate), 'MMM d, yyyy')} - {format(parseISO(selectedTrip.endDate), 'MMM d, yyyy')}</p>
+                  <p>{format(parseISO(selectedTrip.start_date), 'MMM d, yyyy')} - {format(parseISO(selectedTrip.end_date), 'MMM d, yyyy')}</p>
                 </div>
               </div>
 
@@ -533,7 +545,7 @@ export default function Calendar() {
                 <div>
                   <p className="font-semibold">Attendees</p>
                   <div className="flex flex-wrap gap-2 mt-1">
-                    {selectedTrip.familyMembers.map(member => (
+                    {selectedTrip.family_members.map(member => (
                       <span key={member} className="px-3 py-1 rounded-full text-sm text-white" style={{ backgroundColor: getMemberColor(member) }}>
                         {member}
                       </span>
@@ -546,7 +558,7 @@ export default function Calendar() {
                 <Users size={20} className="text-gray-500" />
                 <div>
                   <p className="font-semibold">Guest Count</p>
-                  <p>{selectedTrip.guestCount} people</p>
+                  <p>{selectedTrip.guest_count} people</p>
                 </div>
               </div>
 
@@ -554,7 +566,7 @@ export default function Calendar() {
                 <User size={20} className="text-gray-500" />
                 <div>
                   <p className="font-semibold">Created By</p>
-                  <p>{selectedTrip.createdBy}</p>
+                  <p>{selectedTrip.created_by}</p>
                 </div>
               </div>
 
