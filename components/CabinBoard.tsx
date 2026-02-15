@@ -26,7 +26,7 @@ export default function CabinBoard() {
   const [posts, setPosts] = useState<Post[]>([])
   const [showPostForm, setShowPostForm] = useState(false)
   const [formData, setFormData] = useState({
-    author: 'Mark',
+    author: 'Kate',
     title: '',
     content: '',
   })
@@ -74,7 +74,7 @@ export default function CabinBoard() {
       alert('Failed to create post')
     } else {
       setShowPostForm(false)
-      setFormData({ author: 'Mark', title: '', content: '' })
+      setFormData({ author: 'Kate', title: '', content: '' })
     }
   }
 
@@ -260,7 +260,7 @@ export default function CabinBoard() {
               <button
                 onClick={() => {
                   setShowPostForm(false)
-                  setFormData({ author: 'Mark', title: '', content: '' })
+                  setFormData({ author: 'Kate', title: '', content: '' })
                 }}
                 className="p-2 hover:bg-[#7a8c7e20] rounded-full transition-all duration-200"
               >

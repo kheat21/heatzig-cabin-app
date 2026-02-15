@@ -14,8 +14,8 @@ const playfair = Playfair_Display({
 });
 
 export const metadata: Metadata = {
-  title: "Heatzig Cabin - Aspen, Colorado",
-  description: "Family cabin calendar and message board",
+  title: "Heatzig Cabin - Park City, Utah",
+  description: "Luxury family cabin at Promontory Club in Park City, Utah",
 };
 
 export default function RootLayout({
