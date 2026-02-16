@@ -3,8 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
+// Track if configuration is valid
+export const isSupabaseConfigured = !!(supabaseUrl && supabaseAnonKey)
+
 // Validate that required environment variables are present
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!isSupabaseConfigured) {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
   console.error('⚠️  SUPABASE CONFIGURATION ERROR')
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')
@@ -23,8 +26,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('')
 }
 
-// Create Supabase client with fallback values to prevent Header errors
-// When credentials are invalid, database operations will fail gracefully with clear error messages
+// Create Supabase client with placeholder values to prevent Header errors
+// When credentials are invalid, database operations will fail with clear error messages
+// Components can check isSupabaseConfigured to show appropriate UI
 export const supabase = createClient(
   supabaseUrl || 'https://placeholder.supabase.co',
   supabaseAnonKey || 'placeholder-key'

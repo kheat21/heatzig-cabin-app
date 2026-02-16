@@ -368,7 +368,10 @@ export default function CabinBoard() {
                 <p className="text-sm text-red-800">{errorMessage}</p>
                 <p className="text-xs text-red-600 mt-3 font-medium">Troubleshooting:</p>
                 <ul className="text-xs text-red-600 mt-1 ml-4 list-disc">
-                  <li>Check that NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set in your deployment environment</li>
+                  <li>
+                    Check that NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY 
+                    are set in your deployment environment
+                  </li>
                   <li>Verify Supabase RLS policies allow inserts on the posts table</li>
                   <li>Check browser console for additional error details</li>
                 </ul>
